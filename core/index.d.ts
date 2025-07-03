@@ -27,6 +27,8 @@ declare global {
       data: any,
       messageIde: string,
     ) => void;
+    hxMachineId?: string;
+    hxMediaUrl?: string;
   }
 }
 
@@ -678,7 +680,7 @@ export interface Thread {
   id: number;
 }
 
-export type IdeType = "vscode" | "jetbrains";
+export type IdeType = "hbuilderx" | "vscode" | "jetbrains";
 
 export interface IdeInfo {
   ideType: IdeType;

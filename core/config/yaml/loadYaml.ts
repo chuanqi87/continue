@@ -143,11 +143,13 @@ async function loadConfigYaml(options: {
           ide,
         ),
         injectBlocks: allLocalBlocks,
+        asConfigResult: true,
       },
     );
-    config = unrollResult.config;
-    if (unrollResult.errors) {
-      errors.push(...unrollResult.errors);
+    const configResult = unrollResult as ConfigResult<AssistantUnrolled>;
+    config = configResult.config;
+    if (configResult.errors) {
+      errors.push(...configResult.errors);
     }
   }
 
@@ -337,7 +339,7 @@ async function configYamlToContinueConfig(options: {
       if (model.roles?.includes("embed")) {
         const { provider } = model;
         if (provider === "transformers.js") {
-          if (ideInfo.ideType === "vscode") {
+          if (ideInfo.ideType === "vscode" || ideInfo.ideType === "hbuilderx") {
             continueConfig.modelsByRole.embed.push(
               new TransformersJsEmbeddingsProvider(),
             );
@@ -365,7 +367,7 @@ async function configYamlToContinueConfig(options: {
 
   // Add transformers js to the embed models in vs code if not already added
   if (
-    ideInfo.ideType === "vscode" &&
+    (ideInfo.ideType === "vscode" || ideInfo.ideType === "hbuilderx") &&
     !continueConfig.modelsByRole.embed.find(
       (m) => m.providerName === "transformers.js",
     )

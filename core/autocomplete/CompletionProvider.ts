@@ -272,6 +272,10 @@ export class CompletionProvider {
       if (ideType === "jetbrains") {
         this.markDisplayed(input.completionId, outcome);
       }
+      // HBuilderX可能也需要类似的显示标记逻辑
+      if (ideType === "hbuilderx") {
+        this.markDisplayed(input.completionId, outcome);
+      }
 
       return outcome;
     } catch (e: any) {

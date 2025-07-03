@@ -20,6 +20,19 @@ export const defaultContextProvidersJetBrains: NonNullable<
   { provider: "codebase" },
 ];
 
+export const defaultContextProvidersHBuilderX: NonNullable<
+  ConfigYaml["context"]
+>[number][] = [
+  { provider: "code" },
+  { provider: "docs" },
+  { provider: "diff" },
+  { provider: "terminal" },
+  { provider: "problems" },
+  { provider: "folder" },
+  { provider: "codebase" },
+  { provider: "currentFile" },
+];
+
 export const defaultConfig: ConfigYaml = {
   name: "Local Assistant",
   version: "1.0.0",
@@ -34,4 +47,12 @@ export const defaultConfigJetBrains: ConfigYaml = {
   schema: "v1",
   models: [],
   context: defaultContextProvidersJetBrains,
+};
+
+export const defaultConfigHBuilderX: ConfigYaml = {
+  name: "Local Assistant",
+  version: "1.0.0",
+  schema: "v1",
+  models: [],
+  context: defaultContextProvidersHBuilderX,
 };

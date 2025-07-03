@@ -464,6 +464,10 @@ async function intermediateToFinalConfig({
     if (ideInfo.ideType === "vscode") {
       return new TransformersJsEmbeddingsProvider();
     }
+    // HBuilderX可能支持嵌入式模型，需要确认
+    if (ideInfo.ideType === "hbuilderx") {
+      return new TransformersJsEmbeddingsProvider();
+    }
     return null;
   }
   const newEmbedder = getEmbeddingsILLM(config.embeddingsProvider);
@@ -618,7 +622,7 @@ async function intermediateToFinalConfig({
 
   // Add transformers JS to the embed models list if not already added
   if (
-    ideInfo.ideType === "vscode" &&
+    (ideInfo.ideType === "vscode" || ideInfo.ideType === "hbuilderx") &&
     !continueConfig.modelsByRole.embed.find(
       (m) => m.providerName === "transformers.js",
     )
@@ -697,8 +701,9 @@ function escapeSpacesInPath(p: string): string {
 }
 
 async function handleEsbuildInstallation(ide: IDE, ideType: IdeType) {
-  // JetBrains is currently the only IDE that we've reached the plugin size limit and
-  // therefore need to install esbuild manually to reduce the size
+  // JetBrains是当前唯一达到插件大小限制的IDE
+  // 因此需要手动安装esbuild来减少大小
+  // VSCode和HBuilderX支持ESBuild
   if (ideType !== "jetbrains") {
     return;
   }

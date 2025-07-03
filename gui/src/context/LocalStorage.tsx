@@ -20,11 +20,22 @@ export const LocalStorageProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // TODO setvalue
   useEffect(() => {
-    const isJetbrains = getLocalStorage("ide") === "jetbrains";
-    let fontSize = getLocalStorage("fontSize") ?? (isJetbrains ? 15 : 14);
-    setValues({
-      fontSize,
-    });
+    const ide = getLocalStorage("ide");
+    let fontSize: number;
+
+    switch (ide) {
+      case "jetbrains":
+        fontSize = getLocalStorage("fontSize") ?? 15;
+        break;
+      case "hbuilderx":
+        fontSize = getLocalStorage("fontSize") ?? 15; // HBuilderX默认字体大小
+        break;
+      default: // vscode
+        fontSize = getLocalStorage("fontSize") ?? 14;
+        break;
+    }
+
+    setValues({ fontSize });
   }, []);
 
   return (

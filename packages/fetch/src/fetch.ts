@@ -7,6 +7,8 @@ import { getAgentOptions } from "./getAgentOptions.js";
 import patchedFetch from "./node-fetch-patch.js";
 import { getProxy, shouldBypassProxy } from "./util.js";
 
+process.env.VERBOSE_FETCH = "true";
+
 const { http, https } = (followRedirects as any).default;
 
 function logRequest(

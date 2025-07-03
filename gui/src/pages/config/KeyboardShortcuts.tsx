@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import Shortcut from "../../components/gui/Shortcut";
-import { isJetBrains } from "../../util";
+import { isHBuilderX, isJetBrains } from "../../util";
 
 interface KeyboardShortcutProps {
   shortcut: string;
@@ -130,9 +130,66 @@ const jetbrainsShortcuts: Omit<KeyboardShortcutProps, "isEven">[] = [
   },
 ];
 
+const hbuilderxShortcuts: Omit<KeyboardShortcutProps, "isEven">[] = [
+  {
+    shortcut: "ctrl '",
+    description: "切换选中模型",
+  },
+  {
+    shortcut: "ctrl I",
+    description: "编辑高亮代码",
+  },
+  {
+    shortcut: "ctrl L",
+    description: "新建聊天 / 新建聊天并带选中代码 / 关闭Continue侧边栏",
+  },
+  {
+    shortcut: "ctrl backspace",
+    description: "取消响应",
+  },
+  {
+    shortcut: "ctrl shift I",
+    description: "切换行内编辑焦点",
+  },
+  {
+    shortcut: "ctrl shift L",
+    description: "聚焦当前聊天 / 添加选中代码到当前聊天 / 关闭Continue侧边栏",
+  },
+  {
+    shortcut: "ctrl shift R",
+    description: "调试终端",
+  },
+  {
+    shortcut: "ctrl shift backspace",
+    description: "拒绝差异",
+  },
+  {
+    shortcut: "ctrl shift enter",
+    description: "接受差异",
+  },
+  {
+    shortcut: "alt ctrl N",
+    description: "拒绝差异中的顶部变更",
+  },
+  {
+    shortcut: "alt ctrl Y",
+    description: "接受差异中的顶部变更",
+  },
+  {
+    shortcut: "ctrl K ctrl A",
+    description: "切换自动补全启用状态",
+  },
+  {
+    shortcut: "ctrl K ctrl M",
+    description: "切换全屏模式",
+  },
+];
+
 function KeyboardShortcuts() {
   const shortcuts = useMemo(() => {
-    return isJetBrains() ? jetbrainsShortcuts : vscodeShortcuts;
+    if (isJetBrains()) return jetbrainsShortcuts;
+    if (isHBuilderX()) return hbuilderxShortcuts;
+    return vscodeShortcuts;
   }, []);
 
   return (

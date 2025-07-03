@@ -1,12 +1,22 @@
 import { useAppDispatch } from "../../../../redux/hooks";
 import { cancelStream } from "../../../../redux/thunks/cancelStream";
-import { getAltKeyLabel, getMetaKeyLabel, isJetBrains } from "../../../../util";
+import {
+  getAltKeyLabel,
+  getMetaKeyLabel,
+  isHBuilderX,
+  isJetBrains,
+} from "../../../../util";
 import { Container, StopButton } from "./components";
 import { GeneratingIndicator } from "./GeneratingIndicator";
 
 export function StreamingToolbar() {
   const dispatch = useAppDispatch();
-  const jetbrains = isJetBrains();
+
+  const getKeyLabel = () => {
+    if (isJetBrains()) return getAltKeyLabel();
+    if (isHBuilderX()) return "Ctrl";
+    return getMetaKeyLabel();
+  };
 
   return (
     <Container>
@@ -17,7 +27,7 @@ export function StreamingToolbar() {
           void dispatch(cancelStream());
         }}
       >
-        {jetbrains ? getAltKeyLabel() : getMetaKeyLabel()} ⌫ Cancel
+        {getKeyLabel()} ⌫ Cancel
       </StopButton>
     </Container>
   );
