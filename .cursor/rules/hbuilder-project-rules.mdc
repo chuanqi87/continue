@@ -5,3 +5,5 @@ alwaysApply: true
 ---
 如果增加的代码中涉及日志，需要在console中增加[hbuilderx]前缀
 不用增加测试用例脚本或代码
+gui的构建是在gui目录下执行npm run build，执行成功后需要把构建出的dist目录下的内容复制到extensions/hbuilderx/gui目录下
+hbuilderx的构建是在extensions/hbuilderx目录下执行npm run build

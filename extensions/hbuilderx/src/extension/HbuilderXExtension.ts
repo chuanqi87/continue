@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { registerAllCommands } from "../commands";
 import { ContinueGUIWebviewViewProvider } from "../ContinueGUIWebviewViewProvider";
 import { VerticalDiffManager } from "../diff/vertical/manager";
-import { HbuilderXIde } from "../HbuilderXIde";
+import { HbuilderXIde } from "../HBuilderXIde";
 import EditDecorationManager from "../quickEdit/EditDecorationManager";
 import { UriEventHandler } from "../stubs/uriHandler";
 import { WorkOsAuthProvider } from "../stubs/WorkOsAuthProvider";

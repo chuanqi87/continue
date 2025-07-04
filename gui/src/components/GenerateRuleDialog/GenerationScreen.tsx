@@ -1,9 +1,4 @@
-import {
-  createRuleMarkdown,
-  getRuleType,
-  RuleType,
-  RuleTypeDescriptions,
-} from "@continuedev/config-yaml";
+import { createRuleMarkdown } from "@continuedev/config-yaml";
 import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { createRuleFilePath } from "core/config/markdown/utils";
 import { CreateRuleBlockArgs } from "core/tools/implementations/createRuleBlock";
@@ -14,6 +9,30 @@ import Spinner from "../gui/Spinner";
 import { ToolTip } from "../gui/Tooltip";
 import { Button } from "../ui";
 import { useRuleGeneration } from "./useRuleGeneration";
+
+// 临时定义这些类型和函数，直到包中包含它们
+enum RuleType {
+  Always = "always",
+  OnDemand = "onDemand",
+  AutoAttached = "autoAttached",
+  AgentRequested = "agentRequested",
+  Manual = "manual",
+}
+
+const RuleTypeDescriptions: Record<RuleType, string> = {
+  [RuleType.Always]: "This rule will always be applied to relevant files",
+  [RuleType.OnDemand]:
+    "This rule will only be applied when specifically requested",
+  [RuleType.AutoAttached]:
+    "This rule will be automatically attached to matching files",
+  [RuleType.AgentRequested]:
+    "This rule will be used when requested by the agent",
+  [RuleType.Manual]: "This rule will only be applied manually",
+};
+
+const getRuleType = (args: any): RuleType => {
+  return args.alwaysApply ? RuleType.Always : RuleType.OnDemand;
+};
 
 interface GenerationScreenProps {
   inputPrompt: string;

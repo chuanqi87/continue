@@ -51,6 +51,10 @@ class HbuilderXIde implements IDE {
     return Promise.resolve(this.getIdeSettingsSync());
   }
 
+  isWorkspaceRemote(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
   getDiff(includeUnstaged: boolean): Promise<string[]> {
     console.log(
       "[hbuilderx] getDiff 方法未实现, includeUnstaged:",
