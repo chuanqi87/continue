@@ -1,5 +1,5 @@
 import { machineIdSync } from "node-machine-id";
-const hx = require("hbuilderx");
+const hx: any = require("hbuilderx");
 
 // export function translate(range: vscode.Range, lines: number): vscode.Range {
 //   return new vscode.Range(
@@ -21,8 +21,13 @@ export function getNonce() {
 }
 
 export function getExtensionUri(): any {
-  // TODO: 待确认实现
-  return "/Users/legend/Desktop/Code/continue/extensions/hbuilderx";
+  let pluginFile = hx.extensions._pluginFile_;
+
+  const extensionDir = pluginFile.replace("/out/extension.js", "");
+  console.log(
+    `[hbuilderx] Extension URI resolved from pluginFile: ${extensionDir}`,
+  );
+  return extensionDir;
 }
 
 export function getViewColumnOfFile(uri: hx.Uri): hx.ViewColumn | undefined {

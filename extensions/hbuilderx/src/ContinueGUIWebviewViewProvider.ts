@@ -81,31 +81,21 @@ export class ContinueGUIWebviewViewProvider {
     const extensionUri = getExtensionUri();
     console.log("[hbuilderx] 扩展URI:", extensionUri);
 
-    let scriptUri: string;
-    let styleMainUri: string;
     // GUI资源媒体路径
     const vscMediaUrl: string = hx.Uri.file(`${extensionUri}/gui`).toString();
     console.log("[hbuilderx] 媒体资源URL:", vscMediaUrl);
 
-    // 检查是否为开发模式
-    const inDevelopmentMode = context?.extensionMode === 2; //vscode.ExtensionMode.Development;
-    console.log("[hbuilderx] 开发模式:", inDevelopmentMode);
-
-    //TODO: 这里需要修改, 可能会有bug
-    if (inDevelopmentMode) {
-      // 生产模式：使用打包后的资源文件
-      console.log("[hbuilderx] 使用生产模式资源");
-      scriptUri = hx.Uri.file(`${extensionUri}/gui/assets/index.js`).toString();
-      styleMainUri = hx.Uri.file(
-        `${extensionUri}/gui/assets/index.css`,
-      ).toString();
-    } else {
-      // 开发模式：使用本地开发服务器
-      console.log("[hbuilderx] 使用开发模式资源");
-      scriptUri = "http://localhost:5173/src/main.tsx";
-      styleMainUri = "http://localhost:5173/src/index.css";
-    }
-
+    // 生产模式：使用打包后的资源文件
+    console.log("[hbuilderx] 使用生产模式资源");
+    let scriptUri = hx.Uri.file(
+      `${extensionUri}/gui/assets/index.js`,
+    ).toString();
+    let styleMainUri = hx.Uri.file(
+      `${extensionUri}/gui/assets/index.css`,
+    ).toString();
+    let styleXCircleIconUri = hx.Uri.file(
+      `${extensionUri}/gui/assets/XCircleIcon.js`,
+    ).toString();
     console.log("[hbuilderx] 脚本URI:", scriptUri);
     console.log("[hbuilderx] 样式URI:", styleMainUri);
 
@@ -160,7 +150,7 @@ export class ContinueGUIWebviewViewProvider {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="${styleMainUri}" rel="stylesheet">
-        
+        <link rel="modulepreload" href="${styleXCircleIconUri}">
         <style>
           * {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
@@ -181,20 +171,6 @@ export class ContinueGUIWebviewViewProvider {
       </head>
       <body lang="zh-CN">
         <div id="root"></div>
-
-        ${
-          inDevelopmentMode
-            ? `<script type="module">
-          // React热重载相关配置（仅开发模式）
-          import RefreshRuntime from "http://localhost:5173/@react-refresh"
-          RefreshRuntime.injectIntoGlobalHook(window)
-          window.$RefreshReg$ = () => {}
-          window.$RefreshSig$ = () => (type) => type
-          window.__vite_plugin_react_preamble_installed__ = true
-          </script>`
-            : ""
-        }
-
         <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
 
         <!-- 设置全局变量供前端使用 -->
