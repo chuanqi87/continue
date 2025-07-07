@@ -1,4 +1,6 @@
 import { machineIdSync } from "node-machine-id";
+import * as path from "path";
+import * as URI from "uri-js";
 const hx: any = require("hbuilderx");
 
 // export function translate(range: vscode.Range, lines: number): vscode.Range {
@@ -23,11 +25,27 @@ export function getNonce() {
 export function getExtensionUri(): any {
   let pluginFile = hx.extensions._pluginFile_;
 
-  const extensionDir = pluginFile.replace("/out/extension.js", "");
-  console.log(
-    `[hbuilderx] Extension URI resolved from pluginFile: ${extensionDir}`,
-  );
-  return extensionDir;
+  if (!pluginFile) {
+    console.log("[hbuilderx] Warning: pluginFile is not available");
+    return null;
+  }
+
+  try {
+    // 通用地去掉后两级目录 (例如: /path/to/extension/out/extension.js -> /path/to/extension)
+    // 使用 path.dirname 两次来上移两级目录
+    const extensionDir = path.dirname(path.dirname(pluginFile));
+
+    console.log(
+      `[hbuilderx] Extension URI resolved from pluginFile: ${pluginFile} -> ${extensionDir}`,
+    );
+    return extensionDir;
+  } catch (error) {
+    console.log(`[hbuilderx] Error resolving extension URI: ${error}`);
+    // 如果出错，尝试使用原来的方法作为备用
+    const extensionDir = pluginFile.replace(/[/\\]out[/\\]extension\.js$/, "");
+    console.log(`[hbuilderx] Fallback extension URI: ${extensionDir}`);
+    return extensionDir;
+  }
 }
 
 export function getViewColumnOfFile(uri: hx.Uri): hx.ViewColumn | undefined {
