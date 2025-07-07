@@ -1,6 +1,6 @@
-import { useState, useContext, useCallback } from "react";
+import { useCallback, useContext, useState } from "react";
 import { IdeMessengerContext } from "../context/IdeMessenger";
-import { isJetBrains } from "../util";
+import { isHBuilderX, isJetBrains } from "../util";
 
 export default function useCopy(text: string | (() => string)) {
   const [copied, setCopied] = useState<boolean>(false);
@@ -8,9 +8,12 @@ export default function useCopy(text: string | (() => string)) {
 
   const copyText = useCallback(() => {
     const textVal = typeof text === "string" ? text : text();
-    if (isJetBrains()) {
+
+    // JetBrains 和 HBuilderX 都使用 ideMessenger 发送消息
+    if (isJetBrains() || isHBuilderX()) {
       ideMessenger.post("copyText", { text: textVal });
     } else {
+      // VSCode 使用 navigator.clipboard
       navigator.clipboard.writeText(textVal);
     }
 

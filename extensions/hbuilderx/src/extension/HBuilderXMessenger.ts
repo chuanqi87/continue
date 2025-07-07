@@ -14,7 +14,7 @@ import {
 } from "core/protocol/passThrough";
 import { ApplyManager } from "../apply";
 import { VerticalDiffManager } from "../diff/vertical/manager";
-import { HbuilderXIde } from "../HbuilderXIde";
+import { HbuilderXIde } from "../HBuilderXIde";
 import { getControlPlaneSessionInfo } from "../stubs/WorkOsAuthProvider";
 import { handleLLMError } from "../util/errorHandling";
 import { getExtensionUri } from "../util/hbuilderx";
@@ -254,6 +254,22 @@ export class HbuilderXMessenger {
     this.onWebview("edit/clearDecorations", async (msg) => {
       console.warn("[hbuilderx] edit/clearDecorations 消息未实现");
       // editDecorationManager.clear();
+    });
+
+    this.onWebview("copyText", async (msg) => {
+      console.log("[hbuilderx] copyText 开始处理", {
+        textLength: msg.data.text?.length || 0,
+      });
+
+      try {
+        // 使用 HBuilderX 的剪贴板 API
+        await hx.env.clipboard.writeText(msg.data.text);
+        console.log("[hbuilderx] copyText 复制成功");
+      } catch (error: any) {
+        console.error("[hbuilderx] copyText 复制失败", error);
+        // 如果复制失败，显示错误提示
+        hx.window.showErrorMessage(`复制失败: ${error?.message || error}`);
+      }
     });
 
     /** PASS THROUGH FROM WEBVIEW TO CORE AND BACK **/
