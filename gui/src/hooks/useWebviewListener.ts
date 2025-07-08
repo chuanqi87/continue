@@ -6,6 +6,9 @@ import { isHBuilderX } from "../util";
 
 declare const hbuilderx: any;
 
+// 添加全局监听器管理
+const hbuilderxListeners = new Map<string, Function>();
+
 export function useWebviewListener<T extends keyof ToWebviewProtocol>(
   messageType: T,
   handler: (data: ToWebviewProtocol[T][0]) => Promise<ToWebviewProtocol[T][1]>,
@@ -19,14 +22,17 @@ export function useWebviewListener<T extends keyof ToWebviewProtocol>(
       let listener: (event: {
         data: Message<ToWebviewProtocol[T][0]>;
       }) => Promise<void>;
-      let hbuilderxListener: (
-        msg: Message<ToWebviewProtocol[T][0]>,
-      ) => Promise<void>;
-
       if (!skip) {
         if (isHBuilderX()) {
-          // HBuilderX使用onDidReceiveMessage监听
-          hbuilderxListener = async (msg) => {
+          // 移除旧的监听器
+          if (hbuilderxListeners.has(messageType)) {
+            console.log(`[前端] 移除旧的 ${messageType} 监听器`);
+            hbuilderxListeners.delete(messageType);
+          }
+
+          const hbuilderxListener = async (
+            msg: Message<ToWebviewProtocol[T][0]>,
+          ) => {
             console.log("[前端] useWebviewListener HBuilderX收到消息:", msg);
             if (msg.messageType === messageType) {
               console.log(
@@ -38,6 +44,9 @@ export function useWebviewListener<T extends keyof ToWebviewProtocol>(
             }
           };
 
+          // 存储监听器引用
+          hbuilderxListeners.set(messageType, hbuilderxListener);
+
           if (
             typeof hbuilderx !== "undefined" &&
             hbuilderx.onDidReceiveMessage
@@ -47,10 +56,6 @@ export function useWebviewListener<T extends keyof ToWebviewProtocol>(
               messageType,
             );
             hbuilderx.onDidReceiveMessage(hbuilderxListener);
-          } else {
-            console.log(
-              "[前端] useWebviewListener hbuilderx.onDidReceiveMessage不可用",
-            );
           }
         } else {
           // VSCode和IntelliJ使用window.addEventListener
@@ -65,6 +70,9 @@ export function useWebviewListener<T extends keyof ToWebviewProtocol>(
       }
 
       return () => {
+        if (isHBuilderX()) {
+          hbuilderxListeners.delete(messageType);
+        }
         if (listener) {
           window.removeEventListener("message", listener);
         }

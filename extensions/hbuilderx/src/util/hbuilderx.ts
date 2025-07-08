@@ -1,6 +1,5 @@
 import { machineIdSync } from "node-machine-id";
 import * as path from "path";
-import * as URI from "uri-js";
 const hx: any = require("hbuilderx");
 
 // export function translate(range: vscode.Range, lines: number): vscode.Range {
@@ -49,16 +48,16 @@ export function getExtensionUri(): any {
 }
 
 export function getViewColumnOfFile(uri: hx.Uri): hx.ViewColumn | undefined {
-  for (const tabGroup of hx.window.tabGroups.all) {
-    for (const tab of tabGroup.tabs) {
-      if (
-        (tab?.input as any)?.uri &&
-        URI.equal((tab.input as any).uri, uri.toString())
-      ) {
-        return tabGroup.viewColumn;
-      }
-    }
-  }
+  // for (const tabGroup of hx.window.tabGroups.all) {
+  //   for (const tab of tabGroup.tabs) {
+  //     if (
+  //       (tab?.input as any)?.uri &&
+  //       URI.equal((tab.input as any).uri, uri.toString())
+  //     ) {
+  //       return tabGroup.viewColumn;
+  //     }
+  //   }
+  // }
   return undefined;
 }
 

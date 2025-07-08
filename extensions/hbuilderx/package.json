@@ -144,29 +144,15 @@
         "group": "Continue"
       },
       {
-        "command": "continue.debugTerminal",
-        "category": "Continue",
-        "title": "Debug Terminal",
-        "group": "Continue"
-      },
-      {
         "command": "continue.exitEditMode",
         "category": "Continue",
         "title": "Exit Edit Mode",
         "group": "Continue"
       },
       {
-        "command": "continue.toggleFullScreen",
-        "category": "Continue",
-        "title": "Open in new window",
-        "icon": "$(link-external)",
-        "group": "Continue"
-      },
-      {
         "command": "continue.openConfigPage",
         "category": "Continue",
         "title": "Open Settings",
-        "icon": "$(gear)",
         "group": "Continue"
       },
       {
@@ -185,14 +171,12 @@
         "command": "continue.newSession",
         "category": "Continue",
         "title": "New Session",
-        "icon": "$(add)",
         "group": "Continue"
       },
       {
         "command": "continue.viewHistory",
         "category": "Continue",
         "title": "View History",
-        "icon": "$(history)",
         "group": "Continue"
       },
       {
@@ -273,10 +257,6 @@
         "category": "Continue",
         "title": "Focus Continue Chat",
         "group": "Continue"
-      },
-      {
-        "command": "continue.openChatPanel",
-        "title": "打开Continue聊天面板"
       }
     ],
     "keybindings": [
@@ -376,88 +356,23 @@
       }
     ],
     "menus": {
-      "commandPalette": [
+      "menubar/tool": [
         {
-          "command": "continue.focusContinueInput"
+          "id": "continue.settings",
+          "title": "AGC AI助手",
+          "group": "snippets"
         },
-        {
-          "command": "continue.focusContinueInputWithoutClear"
-        },
-        {
-          "command": "continue.debugTerminal"
-        },
-        {
-          "command": "continue.toggleFullScreen"
-        },
-        {
-          "command": "continue.newSession"
-        },
-        {
-          "command": "continue.openConfigPage"
-        }
-      ],
-      "editor/context": [
-        {
-          "submenu": "continue.continueSubMenu",
-          "group": "0_foot"
-        }
-      ],
-      "editor/title/run": [
-        {
-          "command": "continue.rejectDiff",
-          "group": "Continue",
-          "when": "continue.streamingDiff"
-        }
-      ],
-      "explorer/context": [
-        {
-          "command": "continue.selectFilesAsContext",
-          "group": "1_debug@1"
-        }
-      ],
-      "view/title": [
         {
           "command": "continue.newSession",
-          "group": "navigation@1",
-          "when": "view == continue.continueGUIView"
+          "group": "continue.settings@1"
         },
         {
           "command": "continue.viewHistory",
-          "group": "navigation@2",
-          "when": "view == continue.continueGUIView"
-        },
-        {
-          "command": "continue.toggleFullScreen",
-          "group": "navigation@3",
-          "when": "view == continue.continueGUIView"
+          "group": "continue.settings@2"
         },
         {
           "command": "continue.openConfigPage",
-          "group": "navigation@4",
-          "when": "view == continue.continueGUIView"
-        }
-      ],
-      "editor/title": [
-        {
-          "command": "continue.newSession",
-          "group": "navigation@1",
-          "when": "activeWebviewPanelId == continue.continueGUIView"
-        },
-        {
-          "command": "continue.viewHistory",
-          "group": "navigation@2",
-          "when": "activeWebviewPanelId == continue.continueGUIView"
-        },
-        {
-          "command": "continue.openConfigPage",
-          "group": "navigation@3",
-          "when": "activeWebviewPanelId == continue.continueGUIView"
-        }
-      ],
-      "terminal/context": [
-        {
-          "command": "continue.debugTerminal",
-          "group": "navigation@top"
+          "group": "continue.settings@3"
         }
       ]
     },

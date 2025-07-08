@@ -68,7 +68,7 @@ function focusGUI() {
     fullScreenPanel?.reveal();
   } else {
     // focus sidebar
-    hx.commands.executeCommand("continue.continueGUIView.focus");
+    // hx.commands.executeCommand("continue.continueGUIView.focus");
     // hx.commands.executeCommand("workbench.action.focusAuxiliaryBar");
   }
 }
@@ -455,7 +455,11 @@ const getCommandsMap: (
       sidebar.webviewProtocol?.request("newSession", undefined);
     },
     "continue.viewHistory": () => {
-      hx.commands.executeCommand("continue.navigateTo", "/history", true);
+      sidebar.webviewProtocol?.request("navigateTo", {
+        path: "/history",
+        toggle: true,
+      });
+      // hx.commands.executeCommand("continue.navigateTo", "/history", true);
     },
     "continue.focusContinueSessionId": async (
       sessionId: string | undefined,
@@ -543,7 +547,12 @@ const getCommandsMap: (
     },
     "continue.openConfigPage": () => {
       console.log("[hbuilderx] 打开Continue设置页面");
-      hx.commands.executeCommand("continue.navigateTo", "/config", false);
+      sidebar.webviewProtocol?.request("navigateTo", {
+        path: "/config",
+        toggle: false,
+      });
+
+      // hx.commands.executeCommand("continue.navigateTo", "/config", false);
     },
     "continue.selectFilesAsContext": async (firstUri: any, uris: any[]) => {
       if (uris === undefined) {
