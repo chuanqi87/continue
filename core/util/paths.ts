@@ -9,7 +9,11 @@ import * as JSONC from "comment-json";
 import dotenv from "dotenv";
 
 import { IdeType, SerializedContinueConfig } from "../";
-import { defaultConfig, defaultConfigJetBrains } from "../config/default";
+import {
+  defaultConfig,
+  defaultConfigHBuilderX,
+  defaultConfigJetBrains,
+} from "../config/default";
 import Types from "../config/types";
 
 dotenv.config();
@@ -111,6 +115,8 @@ export function getConfigYamlPath(ideType?: IdeType): string {
   if (!fs.existsSync(p) && !fs.existsSync(getConfigJsonPath())) {
     if (ideType === "jetbrains") {
       fs.writeFileSync(p, YAML.stringify(defaultConfigJetBrains));
+    } else if (ideType === "hbuilderx") {
+      fs.writeFileSync(p, YAML.stringify(defaultConfigHBuilderX));
     } else {
       fs.writeFileSync(p, YAML.stringify(defaultConfig));
     }

@@ -48,7 +48,17 @@ export function getAltKeyLabel(): string {
 }
 
 export function getFontSize(): number {
-  return getLocalStorage("fontSize") ?? (isJetBrains() ? 15 : 14);
+  const fontSize = getLocalStorage("fontSize");
+  if (fontSize) {
+    return fontSize;
+  }
+  if (isHBuilderX()) {
+    return 15;
+  }
+  if (isJetBrains()) {
+    return 15;
+  }
+  return 14;
 }
 
 export function fontSize(n: number): string {
@@ -57,6 +67,10 @@ export function fontSize(n: number): string {
 
 export function isJetBrains() {
   return getLocalStorage("ide") === "jetbrains";
+}
+
+export function isHBuilderX() {
+  return getLocalStorage("ide") === "hbuilderx";
 }
 
 export function isWebEnvironment(): boolean {

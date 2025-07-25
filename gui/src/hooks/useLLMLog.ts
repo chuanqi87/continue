@@ -10,8 +10,10 @@ import {
   LLMInteractionSuccess,
 } from "core";
 import { useEffect, useReducer } from "react";
+import { isHBuilderX } from "../util";
 
 declare const vscode: any;
+declare const hbuilderx: any;
 
 export type LLMResult = LLMInteractionMessage | LLMInteractionChunk;
 
@@ -232,20 +234,46 @@ export default function useLLMLog() {
     // avoids problems when React.StrictMode runs this effect
     // twice - we don't want to process two "init" messages.
     const uuid = crypto.randomUUID();
-    const onMessage = (event: MessageEvent<ToConsoleView>) => {
-      if (event.data.uuid !== uuid) {
-        return;
+
+    if (isHBuilderX()) {
+      // HBuilderX使用onDidReceiveMessage监听
+      const onHBuilderXMessage = (msg: ToConsoleView) => {
+        console.log("[前端] useLLMLog HBuilderX收到消息:", msg);
+        if (msg.uuid !== uuid) {
+          return;
+        }
+        dispatchLlmLog(msg);
+      };
+
+      if (typeof hbuilderx !== "undefined" && hbuilderx.onDidReceiveMessage) {
+        console.log("[前端] useLLMLog 使用hbuilderx.onDidReceiveMessage监听");
+        hbuilderx.onDidReceiveMessage(onHBuilderXMessage);
+      } else {
+        console.log("[前端] useLLMLog hbuilderx.onDidReceiveMessage不可用");
       }
 
-      dispatchLlmLog(event.data);
-    };
-    window.addEventListener("message", onMessage);
-    vscode.postMessage({ type: "start", uuid });
+      hbuilderx.postMessage({ type: "start", uuid });
 
-    return () => {
-      vscode.postMessage({ type: "stop", uuid });
-      window.removeEventListener("message", onMessage);
-    };
+      return () => {
+        hbuilderx.postMessage({ type: "stop", uuid });
+        // 注意：HBuilderX的onDidReceiveMessage可能没有移除监听器的方法
+      };
+    } else {
+      // VSCode和IntelliJ使用window.addEventListener
+      const onMessage = (event: MessageEvent<ToConsoleView>) => {
+        if (event.data.uuid !== uuid) {
+          return;
+        }
+        dispatchLlmLog(event.data);
+      };
+      window.addEventListener("message", onMessage);
+      vscode.postMessage({ type: "start", uuid });
+
+      return () => {
+        vscode.postMessage({ type: "stop", uuid });
+        window.removeEventListener("message", onMessage);
+      };
+    }
   }, []);
 
   return llmLog;

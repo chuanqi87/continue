@@ -339,6 +339,10 @@ export default class DocsService {
     if (ideInfo.ideType === "jetbrains") {
       return false;
     }
+    // HBuilderX支持transformers.js嵌入式模型
+    if (ideInfo.ideType === "hbuilderx") {
+      return true;
+    }
     return true;
   }
 

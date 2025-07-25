@@ -1,7 +1,12 @@
 import { Editor } from "@tiptap/react";
 import { KeyboardEvent } from "react";
-import { isJetBrains, isMetaEquivalentKeyPressed } from "../../../../util";
 import {
+  isHBuilderX,
+  isJetBrains,
+  isMetaEquivalentKeyPressed,
+} from "../../../../util";
+import {
+  handleHBuilderXKeyIssues,
   handleJetBrainsOSRMetaKeyIssues,
   handleVSCMetaKeyIssues,
 } from "../../util/handleMetaKeyIssues";
@@ -20,6 +25,7 @@ export function useEditorEventHandlers(options: {
    *   highlight code using arrow keys is not working
    * - In VS Code, while working with .ipynb files there is a problem where copy/paste/cut will affect
    *   the actual notebook cells, even when performing them in our GUI
+   * - In HBuilderX, we need to handle ctrl key combinations for proper functioning
    *
    *  Currently keydown events for a number of keys are not registering if the
    *  meta/shift key is pressed, for example "x", "c", "v", "z", etc.
@@ -37,6 +43,9 @@ export function useEditorEventHandlers(options: {
 
     if (isOSREnabled) {
       handleJetBrainsOSRMetaKeyIssues(e, editor);
+    } else if (isHBuilderX()) {
+      // HBuilderX特定的按键处理
+      await handleHBuilderXKeyIssues(e, editor);
     } else if (!isJetBrains()) {
       await handleVSCMetaKeyIssues(e, editor);
     }

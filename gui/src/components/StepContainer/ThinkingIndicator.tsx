@@ -28,10 +28,15 @@ const ThinkingIndicator = ({ historyItem }: ThinkingIndicatorProps) => {
   const hasContent = Array.isArray(historyItem.message.content)
     ? !!historyItem.message.content.length
     : !!historyItem.message.content;
-  const isO1 = selectedModel?.model.startsWith("o1");
+
+  // Check if model supports reasoning/thinking
+  const isReasoningModel =
+    selectedModel?.model.startsWith("o1") ||
+    selectedModel?.model.startsWith("deepseek-reasoner");
+
   const isThinking =
     isStreaming && !historyItem.isGatheringContext && !hasContent;
-  if (!isThinking || !isO1) {
+  if (!isThinking || !isReasoningModel) {
     return null;
   }
 

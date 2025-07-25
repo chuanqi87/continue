@@ -14,17 +14,17 @@ if [ -f .nvmrc ]; then
     required_version=${required_node_version#v}
     current_version=${current_node_version#v}
 
-    if [ "$required_version" != "$current_version" ]; then
-        echo "⚠️  Warning: Your Node.js version ($current_node_version) does not match the required version ($required_node_version)"
-        echo "Please consider switching to the correct version using: nvm use"
+    # if [ "$required_version" != "$current_version" ]; then
+    #     echo "⚠️  Warning: Your Node.js version ($current_node_version) does not match the required version ($required_node_version)"
+    #     echo "Please consider switching to the correct version using: nvm use"
         
-        if [ -t 0 ]; then
-            read -p "Press Enter to continue with installation anyway..."
-        else
-            echo "Continuing with installation anyway..."
-        fi
-        echo
-    fi
+    #     if [ -t 0 ]; then
+    #         read -p "Press Enter to continue with installation anyway..."
+    #     else
+    #         echo "Continuing with installation anyway..."
+    #     fi
+    #     echo
+    # fi
 fi
 
 echo "Installing root-level dependencies..."
@@ -84,6 +84,16 @@ popd
 # VSCode Extension (will also package GUI)
 echo "Installing VSCode extension dependencies..."
 pushd extensions/vscode
+# This does way too many things inline but is the common denominator between many of the scripts
+npm install
+npm link @continuedev/core
+# npm run prepackage # not required since npm run package has prescript of prepackage
+npm run package
+popd
+
+# HBuilderX Extension (will also package GUI)
+echo "Installing HBuilderX extension dependencies..."
+pushd extensions/hbuilderx
 # This does way too many things inline but is the common denominator between many of the scripts
 npm install
 npm link @continuedev/core

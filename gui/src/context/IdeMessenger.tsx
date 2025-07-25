@@ -15,13 +15,14 @@ import {
 } from "core/protocol/util";
 import { createContext } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { isJetBrains } from "../util";
+import { isHBuilderX, isJetBrains } from "../util";
 
 interface vscode {
   postMessage(message: any): vscode;
 }
 
 declare const vscode: any;
+declare const hbuilderx: any;
 
 export interface IIdeMessenger {
   post<T extends keyof FromWebviewProtocol>(
@@ -92,6 +93,23 @@ export class IdeMessenger implements IIdeMessenger {
         }
         window.postIntellijMessage?.(messageType, data, messageId);
         return;
+      } else if (isHBuilderX()) {
+        // HBuilderX消息发送机制
+        if (hbuilderx.postMessage === undefined) {
+          console.log(
+            "[hbuilderx] 无法发送消息: hbuilderx.postMessage",
+            messageType,
+            data,
+          );
+          throw new Error("hbuilderx.postMessage is undefined");
+        }
+        const msg: Message = {
+          messageId,
+          messageType,
+          data,
+        };
+        hbuilderx.postMessage(msg);
+        return;
       } else {
         console.log(
           "Unable to send message: vscode is undefined",
@@ -150,13 +168,34 @@ export class IdeMessenger implements IIdeMessenger {
     const messageId = uuidv4();
 
     return new Promise((resolve) => {
-      const handler = (event: any) => {
-        if (event.data.messageId === messageId) {
-          window.removeEventListener("message", handler);
-          resolve(event.data.data as WebviewSingleMessage<T>);
+      if (isHBuilderX()) {
+        // HBuilderX使用onDidReceiveMessage监听
+        const handler = (msg: any) => {
+          console.log("[前端] HBuilderX收到消息:", msg);
+          if (msg.messageId === messageId) {
+            console.log("[前端] 找到匹配的messageId:", messageId);
+            // HBuilderX的onDidReceiveMessage需要手动移除监听器
+            // 但HBuilderX API可能不支持移除，所以我们用一个标志位
+            resolve(msg.data as WebviewSingleMessage<T>);
+          }
+        };
+
+        if (typeof hbuilderx !== "undefined" && hbuilderx.onDidReceiveMessage) {
+          console.log("[前端] 使用hbuilderx.onDidReceiveMessage监听");
+          hbuilderx.onDidReceiveMessage(handler);
+        } else {
+          console.log("[前端] hbuilderx.onDidReceiveMessage不可用");
         }
-      };
-      window.addEventListener("message", handler);
+      } else {
+        // VSCode和IntelliJ使用window.addEventListener
+        const handler = (event: any) => {
+          if (event.data.messageId === messageId) {
+            window.removeEventListener("message", handler);
+            resolve(event.data.data as WebviewSingleMessage<T>);
+          }
+        };
+        window.addEventListener("message", handler);
+      }
 
       this.post(messageType, data, messageId);
     });
@@ -191,26 +230,54 @@ export class IdeMessenger implements IIdeMessenger {
 
     // This handler receieves individual WebviewMessengerResults
     // And pushes them to buffer
-    const handler = (event: {
-      data: Message<WebviewProtocolGeneratorMessage<T>>;
-    }) => {
-      if (event.data.messageId === messageId) {
-        const responseData = event.data.data;
-        if ("error" in responseData) {
-          error = responseData.error;
-          return;
-          // throw new Error(responseData.error);
+    if (isHBuilderX()) {
+      // HBuilderX使用onDidReceiveMessage监听流式响应
+      const handler = (msg: Message<WebviewProtocolGeneratorMessage<T>>) => {
+        console.log("[前端] HBuilderX流式消息:", msg);
+        if (msg.messageId === messageId) {
+          const responseData = msg.data;
+          if ("error" in responseData) {
+            error = responseData.error;
+            return;
+          }
+          if (responseData.done) {
+            done = true;
+            returnVal = responseData.content;
+          } else {
+            buffer.push(responseData.content);
+          }
         }
-        if (responseData.done) {
-          window.removeEventListener("message", handler);
-          done = true;
-          returnVal = responseData.content;
-        } else {
-          buffer.push(responseData.content);
-        }
+      };
+
+      if (typeof hbuilderx !== "undefined" && hbuilderx.onDidReceiveMessage) {
+        console.log("[前端] 使用hbuilderx.onDidReceiveMessage监听流式消息");
+        hbuilderx.onDidReceiveMessage(handler);
+      } else {
+        console.log("[前端] hbuilderx.onDidReceiveMessage不可用");
       }
-    };
-    window.addEventListener("message", handler);
+    } else {
+      // VSCode和IntelliJ使用window.addEventListener
+      const handler = (event: {
+        data: Message<WebviewProtocolGeneratorMessage<T>>;
+      }) => {
+        if (event.data.messageId === messageId) {
+          const responseData = event.data.data;
+          if ("error" in responseData) {
+            error = responseData.error;
+            return;
+            // throw new Error(responseData.error);
+          }
+          if (responseData.done) {
+            window.removeEventListener("message", handler);
+            done = true;
+            returnVal = responseData.content;
+          } else {
+            buffer.push(responseData.content);
+          }
+        }
+      };
+      window.addEventListener("message", handler);
+    }
 
     const handleAbort = () => {
       this.post("abort", undefined, messageId);
