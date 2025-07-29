@@ -9,7 +9,6 @@ import {
   setLastNonEditSessionEmpty,
   updateEditStateApplyState,
 } from "../redux/slices/editState";
-import { updateIndexingStatus } from "../redux/slices/indexingSlice";
 import {
   initializeProfilePreferences,
   setOrganizations,
@@ -238,9 +237,9 @@ function ParallelListeners() {
     );
   });
 
-  useWebviewListener("indexing/statusUpdate", async (data) => {
-    dispatch(updateIndexingStatus(data));
-  });
+  // useWebviewListener("indexing/statusUpdate", async (data) => {
+  //   dispatch(updateIndexingStatus(data));
+  // });
 
   useWebviewListener(
     "updateApplyState",

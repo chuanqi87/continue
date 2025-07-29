@@ -1,6 +1,7 @@
 // import { EXTENSION_NAME } from "core/control-plane/env";
 import { findUriInDirs } from "core/util/uri";
 // import _ from "lodash";
+import { Range } from "core";
 import * as URI from "uri-js";
 const hx = require("hbuilderx");
 const fs = require("fs");
@@ -301,19 +302,19 @@ export class HbuilderXIdeUtils {
         }
       });
   }
-  // async readRangeInFile(uri: vscode.Uri, range: vscode.Range): Promise<string> {
-  //   const buffer = await this.readFile(uri);
-  //   if (buffer === null) {
-  //     return '';
-  //   }
-  //   const contents = new TextDecoder().decode(buffer);
-  //   const lines = contents.split("\n");
-  //   return `${lines
-  //     .slice(range.start.line, range.end.line)
-  //     .join("\n")}\n${lines[
-  //     range.end.line < lines.length - 1 ? range.end.line : lines.length - 1
-  //   ].slice(0, range.end.character)}`;
-  // }
+  async readRangeInFile(uri: any, range: Range): Promise<string> {
+    const buffer = await this.readFile(uri);
+    if (buffer === null) {
+      return "";
+    }
+    const contents = new TextDecoder().decode(buffer);
+    const lines = contents.split("\n");
+    return `${lines
+      .slice(range.start.line, range.end.line)
+      .join("\n")}\n${lines[
+      range.end.line < lines.length - 1 ? range.end.line : lines.length - 1
+    ].slice(0, range.end.character)}`;
+  }
   // async getTerminalContents(commands = -1): Promise<string> {
   //   const tempCopyBuffer = await vscode.env.clipboard.readText();
   //   if (commands < 0) {

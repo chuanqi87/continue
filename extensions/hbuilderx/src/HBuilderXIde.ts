@@ -10,14 +10,19 @@ import type {
   Problem,
   Range,
   RangeInFile,
+  SignatureHelp,
   TerminalOptions,
   Thread,
   ToastType,
 } from "core";
+import * as child_process from "node:child_process";
+import { exec } from "node:child_process";
+
 import * as URI from "uri-js";
 import { Repository } from "./otherExtensions/git";
 import { SecretStorage } from "./stubs/SecretStorage";
 import { NodeFileType } from "./util/fsUtil";
+import { openEditorAndRevealRange } from "./util/hbuilderx";
 import { HbuilderXIdeUtils } from "./util/ideUtils";
 import { getExtensionVersion } from "./util/util";
 import { HbuilderXWebviewProtocol } from "./webviewProtocol";
@@ -36,6 +41,12 @@ class HbuilderXIde implements IDE {
     this.ideUtils = new HbuilderXIdeUtils();
     this.secretStorage = new SecretStorage(context);
   }
+  gotoTypeDefinition(location: Location): Promise<RangeInFile[]> {
+    throw new Error("Method not implemented.");
+  }
+  getSignatureHelp(location: Location): Promise<SignatureHelp | null> {
+    throw new Error("Method not implemented.");
+  }
 
   getIdeInfo(): Promise<IdeInfo> {
     return Promise.resolve({
@@ -44,6 +55,7 @@ class HbuilderXIde implements IDE {
       version: hx.env.appVersion,
       remoteName: "local",
       extensionVersion: getExtensionVersion(),
+      isPrerelease: false,
     });
   }
 
@@ -64,8 +76,15 @@ class HbuilderXIde implements IDE {
   }
 
   getClipboardContent(): Promise<{ text: string; copiedAt: string }> {
-    console.log("[hbuilderx] getClipboardContent 方法未实现");
-    throw new Error("getClipboardContent 方法未实现");
+    return hx.env.clipboard
+      .readText()
+      .then((text: string) => {
+        return { text, copiedAt: new Date().toISOString() };
+      })
+      .catch((error: any) => {
+        console.error("[hbuilderx] getClipboardContent error:", error);
+        return { text: "", copiedAt: "" };
+      });
   }
 
   async isTelemetryEnabled(): Promise<boolean> {
@@ -199,6 +218,7 @@ class HbuilderXIde implements IDE {
   }
 
   async readFile(fileUri: string): Promise<string> {
+    console.log("[hbuilderx] readFile, fileUri:", fileUri);
     try {
       const uri = hx.Uri.parse(fileUri);
 
@@ -223,36 +243,42 @@ class HbuilderXIde implements IDE {
       // Truncate the buffer to the first MAX_BYTES
       const truncatedBytes = bytes.slice(0, HbuilderXIde.MAX_BYTES);
       const contents = new TextDecoder().decode(truncatedBytes);
+      console.log("[hbuilderx] readFile contents:", contents);
       return contents;
     } catch (e) {
+      console.error("[hbuilderx] readFile error:", e);
       return "";
     }
   }
 
   readRangeInFile(fileUri: string, range: Range): Promise<string> {
-    console.log(
-      "[hbuilderx] readRangeInFile 方法未实现, fileUri:",
-      fileUri,
-      "range:",
-      range,
-    );
-    throw new Error("readRangeInFile 方法未实现");
+    return this.ideUtils.readRangeInFile(hx.Uri.parse(fileUri), range);
   }
 
-  showLines(
+  async showLines(
     fileUri: string,
     startLine: number,
     endLine: number,
   ): Promise<void> {
     console.log(
-      "[hbuilderx] showLines 方法未实现, fileUri:",
+      "[hbuilderx] showLines, fileUri:",
       fileUri,
       "startLine:",
       startLine,
       "endLine:",
       endLine,
     );
-    throw new Error("showLines 方法未实现");
+
+    openEditorAndRevealRange(hx.Uri.parse(fileUri), {
+      start: startLine,
+      end: endLine,
+    }).then((editor: any) => {
+      // Select the lines
+      editor.selection = {
+        start: { line: startLine, character: 0 },
+        end: { line: endLine, character: 0 },
+      };
+    });
   }
 
   async getOpenFiles(): Promise<string[]> {
@@ -282,24 +308,96 @@ class HbuilderXIde implements IDE {
     throw new Error("getPinnedFiles 方法未实现");
   }
 
-  getSearchResults(query: string): Promise<string> {
-    console.log("[hbuilderx] getSearchResults 方法未实现, query:", query);
-    throw new Error("getSearchResults 方法未实现");
+  async getSearchResults(query: string, maxResults?: number): Promise<string> {
+    console.log(
+      "[hbuilderx] getSearchResults called, query:",
+      query,
+      "maxResults:",
+      maxResults,
+    );
+    const results: string[] = [];
+    for (const dir of await this.getWorkspaceDirs()) {
+      const dirResults = await this.runRipgrepQuery(dir, [
+        "-i", // Case-insensitive search
+        "--ignore-file",
+        ".continueignore",
+        "--ignore-file",
+        ".gitignore",
+        "-C",
+        "2", // Show 2 lines of context
+        "--heading", // Only show filepath once per result
+        ...(maxResults ? ["-m", maxResults.toString()] : []),
+        "-e",
+        query, // Pattern to search for
+        ".", // Directory to search in
+      ]);
+
+      results.push(dirResults);
+    }
+
+    const allResults = results.join("\n");
+    if (maxResults) {
+      // In case of multiple workspaces, do max results per workspace and then truncate to maxResults
+      // Will prioritize first workspace results, fine for now
+      // Results are separated by either ./ or --
+      const matches = Array.from(allResults.matchAll(/(\n--|\n\.\/)/g));
+      if (matches.length > maxResults) {
+        return allResults.substring(0, matches[maxResults].index);
+      } else {
+        return allResults;
+      }
+    } else {
+      return allResults;
+    }
   }
 
-  getFileResults(pattern: string): Promise<string[]> {
-    console.log("[hbuilderx] getFileResults 方法未实现, pattern:", pattern);
-    throw new Error("getFileResults 方法未实现");
+  async getFileResults(
+    pattern: string,
+    maxResults?: number,
+  ): Promise<string[]> {
+    console.log(
+      "[hbuilderx] getFileResults called, pattern:",
+      pattern,
+      "maxResults:",
+      maxResults,
+    );
+
+    const results: string[] = [];
+    for (const dir of await this.getWorkspaceDirs()) {
+      const dirResults = await this.runRipgrepQuery(dir, [
+        "--files",
+        "--iglob",
+        pattern,
+        "--ignore-file",
+        ".continueignore",
+        "--ignore-file",
+        ".gitignore",
+        ...(maxResults ? ["--max-count", String(maxResults)] : []),
+      ]);
+
+      results.push(dirResults);
+    }
+
+    const allResults = results.join("\n").split("\n");
+    if (maxResults) {
+      // In the case of multiple workspaces, maxResults will be applied to each workspace
+      // And then the combined results will also be truncated
+      return allResults.slice(0, maxResults);
+    } else {
+      return allResults;
+    }
   }
 
   subprocess(command: string, cwd?: string): Promise<[string, string]> {
-    console.log(
-      "[hbuilderx] subprocess 方法未实现, command:",
-      command,
-      "cwd:",
-      cwd,
-    );
-    throw new Error("subprocess 方法未实现");
+    return new Promise((resolve, reject) => {
+      exec(command, { cwd }, (error, stdout, stderr) => {
+        if (error) {
+          console.warn(error);
+          reject(stderr);
+        }
+        resolve([stdout, stderr]);
+      });
+    });
   }
 
   getProblems(fileUri?: string | undefined): Promise<Problem[]> {
@@ -432,6 +530,67 @@ class HbuilderXIde implements IDE {
       pauseCodebaseIndexOnStart: settings.get("pauseCodebaseIndexOnStart"),
     };
     return ideSettings;
+  }
+
+  runRipgrepQuery(dirUri: string, args: string[]) {
+    console.log(
+      "[hbuilderx] runRipgrepQuery called, dirUri:",
+      dirUri,
+      "args:",
+      args,
+    );
+    //TODO: 需要优化，获取当前工作目录
+    const relativeDir = hx.Uri.parse(dirUri).fsPath;
+    const ripGrepPath = hx.Uri.parse(
+      "/Applications/HBuilderX-Alpha.app/Contents/HBuilderX/plugins/ripgrep/bin/rg",
+    );
+
+    console.log(
+      "[hbuilderx] 启动 ripgrep 进程，工作目录:",
+      relativeDir,
+      "可执行文件:",
+      ripGrepPath.fsPath,
+    );
+
+    const p = child_process.spawn(ripGrepPath.fsPath, args, {
+      cwd: relativeDir,
+    });
+    let output = "";
+    let dataChunkCount = 0;
+
+    p.stdout.on("data", (data) => {
+      dataChunkCount++;
+      const dataStr = data.toString();
+      output += dataStr;
+      console.log(
+        `[hbuilderx] 接收到数据块 ${dataChunkCount}，大小: ${dataStr.length} 字符，总输出长度: ${output.length}`,
+      );
+    });
+
+    return new Promise<string>((resolve, reject) => {
+      p.on("error", (error) => {
+        console.error("[hbuilderx] ripgrep 进程错误:", error.message);
+        reject(error);
+      });
+
+      p.on("close", (code) => {
+        console.log(
+          `[hbuilderx] ripgrep 进程结束，退出代码: ${code}，总输出长度: ${output.length}，数据块数: ${dataChunkCount}`,
+        );
+
+        if (code === 0) {
+          console.log("[hbuilderx] ripgrep 查询成功完成");
+          resolve(output);
+        } else if (code === 1) {
+          // No matches
+          console.log("[hbuilderx] ripgrep 未找到匹配项");
+          resolve("No matches found");
+        } else {
+          console.error(`[hbuilderx] ripgrep 进程异常退出，代码: ${code}`);
+          reject(new Error(`Process exited with code ${code}`));
+        }
+      });
+    });
   }
 
   private static MAX_BYTES = 100000;

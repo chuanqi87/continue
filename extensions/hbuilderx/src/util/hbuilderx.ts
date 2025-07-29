@@ -90,13 +90,13 @@ export function getRightViewColumn(): hx.ViewColumn {
 let showTextDocumentInProcess = false;
 
 export function openEditorAndRevealRange(
-  uri: hx.Uri,
-  range?: hx.Range,
-  viewColumn?: hx.ViewColumn,
+  uri: any,
+  range?: any,
+  viewColumn?: any,
   preview?: boolean,
-): Promise<hx.TextEditor> {
+): Promise<any> {
   return new Promise((resolve, _) => {
-    hx.workspace.openTextDocument(uri).then(async (doc) => {
+    hx.workspace.openTextDocument(uri).then(async (doc: any) => {
       try {
         // An error is thrown mysteriously if you open two documents in parallel, hence this
         while (showTextDocumentInProcess) {
