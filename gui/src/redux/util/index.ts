@@ -97,6 +97,16 @@ export function logToolUsage(
   messenger: IIdeMessenger,
   finalOutput?: ContextItem[],
 ) {
+  console.log("[hbuilderx] logToolUsage: Logging tool usage", {
+    toolCallId: toolCallState.toolCallId,
+    functionName:
+      toolCallState.tool?.function?.name ||
+      toolCallState.toolCall.function.name,
+    accepted,
+    success,
+    outputCount: finalOutput?.length || toolCallState.output?.length || 0,
+  });
+
   messenger.post("devdata/log", {
     name: "toolUsage",
     data: {

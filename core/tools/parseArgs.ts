@@ -3,9 +3,32 @@ import { ToolCallDelta } from "..";
 export function safeParseToolCallArgs(
   toolCall: ToolCallDelta,
 ): Record<string, any> {
+  console.log("[hbuilderx] safeParseToolCallArgs: Starting argument parsing", {
+    toolName: toolCall.function?.name,
+    toolCallId: toolCall.id,
+    rawArguments: toolCall.function?.arguments,
+  });
+
   try {
-    return JSON.parse(toolCall.function?.arguments?.trim() || "{}");
-  } catch (e) {
+    const parsedArgs = JSON.parse(toolCall.function?.arguments?.trim() || "{}");
+    console.log(
+      "[hbuilderx] safeParseToolCallArgs: Successfully parsed arguments",
+      {
+        toolName: toolCall.function?.name,
+        parsedArgs,
+      },
+    );
+    return parsedArgs;
+  } catch (e: unknown) {
+    console.error(
+      "[hbuilderx] safeParseToolCallArgs: Failed to parse tool call arguments",
+      {
+        toolName: toolCall.function?.name,
+        toolCallId: toolCall.id,
+        rawArguments: toolCall.function?.arguments,
+        error: e instanceof Error ? e.message : String(e),
+      },
+    );
     //console.error(
     //  `Failed to parse tool call arguments:\nTool call: ${toolCall.function?.name + " " + toolCall.id}\nArgs:${toolCall.function?.arguments}\n`,
     //);

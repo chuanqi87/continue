@@ -14,10 +14,13 @@ export const streamThunkWrapper = createAsyncThunk<
   ThunkApiType
 >("chat/streamWrapper", async (runStream, { dispatch, extra, getState }) => {
   const initialState = getState();
+  console.log("[hbuilderx] streamThunkWrapper: Starting stream wrapper");
+
   try {
     await runStream();
     const state = getState();
     if (!state.session.isInEdit) {
+      console.log("[hbuilderx] streamThunkWrapper: Saving current session");
       await dispatch(
         saveCurrentSession({
           openNewSession: false,
@@ -25,7 +28,15 @@ export const streamThunkWrapper = createAsyncThunk<
         }),
       );
     }
-  } catch (e) {
+    console.log(
+      "[hbuilderx] streamThunkWrapper: Stream completed successfully",
+    );
+  } catch (e: unknown) {
+    console.error("[hbuilderx] streamThunkWrapper: Stream failed with error", {
+      error: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : undefined,
+    });
+
     await dispatch(cancelStream());
     dispatch(setDialogMessage(<StreamErrorDialog error={e} />));
     dispatch(setShowDialog(true));
@@ -38,6 +49,13 @@ export const streamThunkWrapper = createAsyncThunk<
       e,
       selectedModel,
     );
+
+    console.log("[hbuilderx] streamThunkWrapper: Error analysis completed", {
+      parsedError,
+      statusCode,
+      modelTitle,
+      providerName,
+    });
 
     const errorData = {
       error_type: statusCode ? `HTTP ${statusCode}` : "Unknown",

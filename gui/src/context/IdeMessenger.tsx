@@ -171,9 +171,7 @@ export class IdeMessenger implements IIdeMessenger {
       if (isHBuilderX()) {
         // HBuilderX使用onDidReceiveMessage监听
         const handler = (msg: any) => {
-          console.log("[前端] HBuilderX收到消息:", msg);
           if (msg.messageId === messageId) {
-            console.log("[前端] 找到匹配的messageId:", messageId);
             // HBuilderX的onDidReceiveMessage需要手动移除监听器
             // 但HBuilderX API可能不支持移除，所以我们用一个标志位
             resolve(msg.data as WebviewSingleMessage<T>);
@@ -181,10 +179,8 @@ export class IdeMessenger implements IIdeMessenger {
         };
 
         if (typeof hbuilderx !== "undefined" && hbuilderx.onDidReceiveMessage) {
-          console.log("[前端] 使用hbuilderx.onDidReceiveMessage监听");
           hbuilderx.onDidReceiveMessage(handler);
         } else {
-          console.log("[前端] hbuilderx.onDidReceiveMessage不可用");
         }
       } else {
         // VSCode和IntelliJ使用window.addEventListener
@@ -233,7 +229,6 @@ export class IdeMessenger implements IIdeMessenger {
     if (isHBuilderX()) {
       // HBuilderX使用onDidReceiveMessage监听流式响应
       const handler = (msg: Message<WebviewProtocolGeneratorMessage<T>>) => {
-        console.log("[前端] HBuilderX流式消息:", msg);
         if (msg.messageId === messageId) {
           const responseData = msg.data;
           if ("error" in responseData) {
@@ -250,7 +245,6 @@ export class IdeMessenger implements IIdeMessenger {
       };
 
       if (typeof hbuilderx !== "undefined" && hbuilderx.onDidReceiveMessage) {
-        console.log("[前端] 使用hbuilderx.onDidReceiveMessage监听流式消息");
         hbuilderx.onDidReceiveMessage(handler);
       } else {
         console.log("[前端] hbuilderx.onDidReceiveMessage不可用");

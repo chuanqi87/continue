@@ -33,12 +33,7 @@ export function useWebviewListener<T extends keyof ToWebviewProtocol>(
           const hbuilderxListener = async (
             msg: Message<ToWebviewProtocol[T][0]>,
           ) => {
-            console.log("[前端] useWebviewListener HBuilderX收到消息:", msg);
             if (msg.messageType === messageType) {
-              console.log(
-                "[前端] useWebviewListener 处理消息类型:",
-                messageType,
-              );
               const result = await handler(msg.data);
               ideMessenger.respond(messageType, result, msg.messageId);
             }
@@ -51,10 +46,6 @@ export function useWebviewListener<T extends keyof ToWebviewProtocol>(
             typeof hbuilderx !== "undefined" &&
             hbuilderx.onDidReceiveMessage
           ) {
-            console.log(
-              "[前端] useWebviewListener 使用hbuilderx.onDidReceiveMessage监听:",
-              messageType,
-            );
             hbuilderx.onDidReceiveMessage(hbuilderxListener);
           }
         } else {

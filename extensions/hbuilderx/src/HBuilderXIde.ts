@@ -172,7 +172,7 @@ class HbuilderXIde implements IDE {
   }
 
   async writeFile(path: string, contents: string): Promise<void> {
-    await hx.workspace.fs.writeFile(hx.Uri.parse(path), Buffer.from(contents));
+    await this.ideUtils.writeFile(path, contents);
   }
 
   showVirtualFile(title: string, contents: string): Promise<void> {
@@ -227,23 +227,55 @@ class HbuilderXIde implements IDE {
         URI.equal(doc.uri.toString(), uri.toString()),
       );
       if (openTextDocument !== undefined) {
-        return openTextDocument.getText();
+        const content = openTextDocument.getText();
+        console.log("[hbuilderx] readFile: Found open document", {
+          fileUri,
+          contentLength: content.length,
+          contentPreview: content.substring(0, 100) + "...",
+        });
+        return content;
       }
+
+      console.log(
+        "[hbuilderx] readFile: Document not open, reading from file system",
+        {
+          fileUri,
+        },
+      );
 
       const fileStats = await this.ideUtils.stat(uri);
       if (fileStats === null || fileStats.size > 10 * HbuilderXIde.MAX_BYTES) {
+        console.warn("[hbuilderx] readFile: File too large or not found", {
+          fileUri,
+          fileStats,
+          maxBytes: HbuilderXIde.MAX_BYTES,
+        });
         return "";
       }
 
+      console.log("[hbuilderx] readFile: File stats OK, reading content", {
+        fileUri,
+        fileSize: fileStats.size,
+      });
+
       const bytes = await this.ideUtils.readFile(uri);
       if (bytes === null) {
+        console.warn("[hbuilderx] readFile: Failed to read file bytes", {
+          fileUri,
+        });
         return "";
       }
 
       // Truncate the buffer to the first MAX_BYTES
       const truncatedBytes = bytes.slice(0, HbuilderXIde.MAX_BYTES);
       const contents = new TextDecoder().decode(truncatedBytes);
-      console.log("[hbuilderx] readFile contents:", contents);
+      console.log("[hbuilderx] readFile: Successfully read file contents", {
+        fileUri,
+        originalSize: bytes.length,
+        truncatedSize: truncatedBytes.length,
+        contentLength: contents.length,
+        contentPreview: contents.substring(0, 100) + "...",
+      });
       return contents;
     } catch (e) {
       console.error("[hbuilderx] readFile error:", e);

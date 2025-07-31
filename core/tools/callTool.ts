@@ -25,23 +25,47 @@ async function callHttpTool(
   args: any,
   extras: ToolExtras,
 ): Promise<ContextItem[]> {
-  const response = await extras.fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      arguments: args,
-    }),
+  console.log("[hbuilderx] callHttpTool: Starting HTTP tool call", {
+    url,
+    args,
   });
+  try {
+    const response = await extras.fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        arguments: args,
+      }),
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(`Failed to call tool at ${url}:\n${JSON.stringify(data)}`);
+    if (!response.ok) {
+      console.error("[hbuilderx] callHttpTool: HTTP request failed", {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        data,
+      });
+      throw new Error(
+        `Failed to call tool at ${url}:\n${JSON.stringify(data)}`,
+      );
+    }
+
+    console.log(
+      "[hbuilderx] callHttpTool: HTTP tool call completed successfully",
+      { url },
+    );
+    return data.output;
+  } catch (error: unknown) {
+    console.error("[hbuilderx] callHttpTool: Error occurred", {
+      url,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
-
-  return data.output;
 }
 
 export function encodeMCPToolUri(mcpId: string, toolName: string): string {
@@ -64,8 +88,14 @@ async function callToolFromUri(
   args: any,
   extras: ToolExtras,
 ): Promise<ContextItem[]> {
+  console.log("[hbuilderx] callToolFromUri: Starting URI-based tool call", {
+    uri,
+    args,
+  });
+
   const parseable = canParseUrl(uri);
   if (!parseable) {
+    console.error("[hbuilderx] callToolFromUri: Invalid URI", { uri });
     throw new Error(`Invalid URI: ${uri}`);
   }
   const parsedUri = new URL(uri);
@@ -75,64 +105,98 @@ async function callToolFromUri(
     case "https:":
       return callHttpTool(uri, args, extras);
     case "mcp:":
+      console.log("[hbuilderx] callToolFromUri: Processing MCP tool call", {
+        uri,
+      });
       const decoded = decodeMCPToolUri(uri);
       if (!decoded) {
+        console.error("[hbuilderx] callToolFromUri: Invalid MCP tool URI", {
+          uri,
+        });
         throw new Error(`Invalid MCP tool URI: ${uri}`);
       }
       const [mcpId, toolName] = decoded;
       const client = MCPManagerSingleton.getInstance().getConnection(mcpId);
 
       if (!client) {
+        console.error("[hbuilderx] callToolFromUri: MCP connection not found", {
+          mcpId,
+        });
         throw new Error("MCP connection not found");
       }
-      const response = await client.client.callTool({
-        name: toolName,
-        arguments: args,
-      });
 
-      if (response.isError === true) {
-        throw new Error(JSON.stringify(response.content));
-      }
+      try {
+        const response = await client.client.callTool({
+          name: toolName,
+          arguments: args,
+        });
 
-      const contextItems: ContextItem[] = [];
-      (response.content as any).forEach((item: any) => {
-        if (item.type === "text") {
-          contextItems.push({
-            name: extras.tool.displayTitle,
-            description: "Tool output",
-            content: item.text,
-            icon: extras.tool.faviconUrl,
-          });
-        } else if (item.type === "resource") {
-          // TODO resource change subscribers https://modelcontextprotocol.io/docs/concepts/resources
-          if (item.resource?.blob) {
+        if (response.isError === true) {
+          console.error(
+            "[hbuilderx] callToolFromUri: MCP tool call returned error",
+            {
+              mcpId,
+              toolName,
+              response,
+            },
+          );
+          throw new Error(JSON.stringify(response.content));
+        }
+
+        console.log(
+          "[hbuilderx] callToolFromUri: MCP tool call completed successfully",
+          { mcpId, toolName },
+        );
+        const contextItems: ContextItem[] = [];
+        (response.content as any).forEach((item: any) => {
+          if (item.type === "text") {
+            contextItems.push({
+              name: extras.tool.displayTitle,
+              description: "Tool output",
+              content: item.text,
+              icon: extras.tool.faviconUrl,
+            });
+          } else if (item.type === "resource") {
+            // TODO resource change subscribers https://modelcontextprotocol.io/docs/concepts/resources
+            if (item.resource?.blob) {
+              contextItems.push({
+                name: extras.tool.displayTitle,
+                description: "MCP Item Error",
+                content:
+                  "Error: tool call received unsupported blob resource item",
+                icon: extras.tool.faviconUrl,
+              });
+            }
+            // TODO account for mimetype? // const mimeType = item.resource.mimeType
+            // const uri = item.resource.uri;
+            contextItems.push({
+              name: extras.tool.displayTitle,
+              description: "Tool output",
+              content: item.resource.text,
+              icon: extras.tool.faviconUrl,
+            });
+          } else {
             contextItems.push({
               name: extras.tool.displayTitle,
               description: "MCP Item Error",
-              content:
-                "Error: tool call received unsupported blob resource item",
+              content: `Error: tool call received unsupported item of type "${item.type}"`,
               icon: extras.tool.faviconUrl,
             });
           }
-          // TODO account for mimetype? // const mimeType = item.resource.mimeType
-          // const uri = item.resource.uri;
-          contextItems.push({
-            name: extras.tool.displayTitle,
-            description: "Tool output",
-            content: item.resource.text,
-            icon: extras.tool.faviconUrl,
-          });
-        } else {
-          contextItems.push({
-            name: extras.tool.displayTitle,
-            description: "MCP Item Error",
-            content: `Error: tool call received unsupported item of type "${item.type}"`,
-            icon: extras.tool.faviconUrl,
-          });
-        }
-      });
-      return contextItems;
+        });
+        return contextItems;
+      } catch (error: unknown) {
+        console.error("[hbuilderx] callToolFromUri: MCP tool call failed", {
+          mcpId,
+          toolName,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     default:
+      console.error("[hbuilderx] callToolFromUri: Unsupported protocol", {
+        protocol: parsedUri?.protocol,
+      });
       throw new Error(`Unsupported protocol: ${parsedUri?.protocol}`);
   }
 }
@@ -142,39 +206,81 @@ export async function callBuiltInTool(
   args: any,
   extras: ToolExtras,
 ): Promise<ContextItem[]> {
-  switch (functionName) {
-    case BuiltInToolNames.ReadFile:
-      return await readFileImpl(args, extras);
-    case BuiltInToolNames.CreateNewFile:
-      return await createNewFileImpl(args, extras);
-    case BuiltInToolNames.GrepSearch:
-      return await grepSearchImpl(args, extras);
-    case BuiltInToolNames.FileGlobSearch:
-      return await fileGlobSearchImpl(args, extras);
-    case BuiltInToolNames.RunTerminalCommand:
-      return await runTerminalCommandImpl(args, extras);
-    case BuiltInToolNames.SearchWeb:
-      return await searchWebImpl(args, extras);
-    case BuiltInToolNames.FetchUrlContent:
-      return await fetchUrlContentImpl(args, extras);
-    case BuiltInToolNames.ViewDiff:
-      return await viewDiffImpl(args, extras);
-    case BuiltInToolNames.LSTool:
-      return await lsToolImpl(args, extras);
-    case BuiltInToolNames.ReadCurrentlyOpenFile:
-      return await readCurrentlyOpenFileImpl(args, extras);
-    case BuiltInToolNames.CreateRuleBlock:
-      return await createRuleBlockImpl(args, extras);
-    case BuiltInToolNames.RequestRule:
-      return await requestRuleImpl(args, extras);
-    case BuiltInToolNames.CodebaseTool:
-      return await codebaseToolImpl(args, extras);
-    case BuiltInToolNames.ViewRepoMap:
-      return await viewRepoMapImpl(args, extras);
-    case BuiltInToolNames.ViewSubdirectory:
-      return await viewSubdirectoryImpl(args, extras);
-    default:
-      throw new Error(`Tool "${functionName}" not found`);
+  console.log("[hbuilderx] callBuiltInTool: Starting built-in tool call", {
+    functionName,
+    args,
+  });
+
+  try {
+    let result: ContextItem[];
+    switch (functionName) {
+      case BuiltInToolNames.ReadFile:
+        result = await readFileImpl(args, extras);
+        break;
+      case BuiltInToolNames.CreateNewFile:
+        result = await createNewFileImpl(args, extras);
+        break;
+      case BuiltInToolNames.GrepSearch:
+        result = await grepSearchImpl(args, extras);
+        break;
+      case BuiltInToolNames.FileGlobSearch:
+        result = await fileGlobSearchImpl(args, extras);
+        break;
+      case BuiltInToolNames.RunTerminalCommand:
+        result = await runTerminalCommandImpl(args, extras);
+        break;
+      case BuiltInToolNames.SearchWeb:
+        result = await searchWebImpl(args, extras);
+        break;
+      case BuiltInToolNames.FetchUrlContent:
+        result = await fetchUrlContentImpl(args, extras);
+        break;
+      case BuiltInToolNames.ViewDiff:
+        result = await viewDiffImpl(args, extras);
+        break;
+      case BuiltInToolNames.LSTool:
+        result = await lsToolImpl(args, extras);
+        break;
+      case BuiltInToolNames.ReadCurrentlyOpenFile:
+        result = await readCurrentlyOpenFileImpl(args, extras);
+        break;
+      case BuiltInToolNames.CreateRuleBlock:
+        result = await createRuleBlockImpl(args, extras);
+        break;
+      case BuiltInToolNames.RequestRule:
+        result = await requestRuleImpl(args, extras);
+        break;
+      case BuiltInToolNames.CodebaseTool:
+        result = await codebaseToolImpl(args, extras);
+        break;
+      case BuiltInToolNames.ViewRepoMap:
+        result = await viewRepoMapImpl(args, extras);
+        break;
+      case BuiltInToolNames.ViewSubdirectory:
+        result = await viewSubdirectoryImpl(args, extras);
+        break;
+      default:
+        console.error("[hbuilderx] callBuiltInTool: Tool not found", {
+          functionName,
+        });
+        throw new Error(`Tool "${functionName}" not found`);
+    }
+
+    console.log(
+      "[hbuilderx] callBuiltInTool: Built-in tool call completed successfully",
+      {
+        functionName,
+        resultCount: result.length,
+      },
+    );
+    return result;
+  } catch (error: unknown) {
+    console.error("[hbuilderx] callBuiltInTool: Built-in tool call failed", {
+      functionName,
+      args,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
 }
 
@@ -189,16 +295,55 @@ export async function callTool(
   contextItems: ContextItem[];
   errorMessage: string | undefined;
 }> {
+  console.log("[hbuilderx] callTool: Starting tool call", {
+    toolName: tool.function.name,
+    toolCallId: toolCall.id,
+    hasUri: !!tool.uri,
+  });
+
   try {
     const args = safeParseToolCallArgs(toolCall);
+    console.log("[hbuilderx] callTool: Parsed tool call arguments", {
+      toolName: tool.function.name,
+      args,
+    });
+
     const contextItems = tool.uri
       ? await callToolFromUri(tool.uri, args, extras)
       : await callBuiltInTool(tool.function.name, args, extras);
+
+    console.log("[hbuilderx] callTool: Tool execution completed", {
+      toolName: tool.function.name,
+      toolCallId: toolCall.id,
+      contextItemsCount: contextItems.length,
+      contextItemsDetails: contextItems.map((item) => ({
+        name: item.name,
+        description: item.description,
+        contentLength: item.content?.length || 0,
+        hasIcon: !!item.icon,
+      })),
+    });
+
     if (tool.faviconUrl) {
       contextItems.forEach((item) => {
         item.icon = tool.faviconUrl;
       });
+      console.log("[hbuilderx] callTool: Applied favicon to context items", {
+        toolName: tool.function.name,
+        faviconUrl: tool.faviconUrl,
+      });
     }
+
+    console.log("[hbuilderx] callTool: Tool call completed successfully", {
+      toolName: tool.function.name,
+      toolCallId: toolCall.id,
+      contextItemsCount: contextItems.length,
+      returningResult: {
+        contextItemsCount: contextItems.length,
+        errorMessage: undefined,
+      },
+    });
+
     return {
       contextItems,
       errorMessage: undefined,
@@ -208,6 +353,18 @@ export async function callTool(
     if (e instanceof Error) {
       errorMessage = e.message;
     }
+
+    console.error("[hbuilderx] callTool: Tool call failed", {
+      toolName: tool.function.name,
+      toolCallId: toolCall.id,
+      errorMessage,
+      errorStack: e instanceof Error ? e.stack : undefined,
+      returningResult: {
+        contextItemsCount: 0,
+        errorMessage,
+      },
+    });
+
     return {
       contextItems: [],
       errorMessage,

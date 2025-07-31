@@ -39,13 +39,36 @@ async function handleToolCallExecution(
   const toolSettings = newState.ui.toolSettings;
   const allToolCallStates = selectCurrentToolCalls(newState);
 
+  console.log(
+    "[hbuilderx] handleToolCallExecution: Starting tool call execution",
+    {
+      allToolCallStatesCount: allToolCallStates.length,
+      toolSettings: Object.keys(toolSettings),
+    },
+  );
+
   // Only process tool calls that are in "generating" status (newly created during this streaming session)
   const toolCallStates = allToolCallStates.filter(
     (toolCallState) => toolCallState.status === "generating",
   );
 
+  console.log(
+    "[hbuilderx] handleToolCallExecution: Filtered generating tool calls",
+    {
+      generatingToolCallsCount: toolCallStates.length,
+      toolCallDetails: toolCallStates.map((tc) => ({
+        toolCallId: tc.toolCallId,
+        functionName: tc.toolCall.function.name,
+        status: tc.status,
+      })),
+    },
+  );
+
   // If no generating tool calls, nothing to process
   if (toolCallStates.length === 0) {
+    console.log(
+      "[hbuilderx] handleToolCallExecution: No generating tool calls to process",
+    );
     return;
   }
 
@@ -56,8 +79,26 @@ async function handleToolCallExecution(
       "allowedWithoutPermission",
   );
 
+  console.log("[hbuilderx] handleToolCallExecution: Auto-approval check", {
+    allAutoApproved,
+    toolCallApprovalStatus: toolCallStates.map((tc) => ({
+      toolCallId: tc.toolCallId,
+      functionName: tc.toolCall.function.name,
+      setting: toolSettings[tc.toolCall.function.name],
+      isAutoApproved:
+        toolSettings[tc.toolCall.function.name] === "allowedWithoutPermission",
+    })),
+  });
+
   // Set all tools as generated first
   toolCallStates.forEach((toolCallState) => {
+    console.log(
+      "[hbuilderx] handleToolCallExecution: Setting tool as generated",
+      {
+        toolCallId: toolCallState.toolCallId,
+        functionName: toolCallState.toolCall.function.name,
+      },
+    );
     dispatch(
       setToolGenerated({
         toolCallId: toolCallState.toolCallId,
@@ -68,7 +109,21 @@ async function handleToolCallExecution(
 
   // Only run if we have auto-approve for all
   if (allAutoApproved && toolCallStates.length > 0) {
+    console.log(
+      "[hbuilderx] handleToolCallExecution: Executing auto-approved tool calls",
+      {
+        toolCallCount: toolCallStates.length,
+      },
+    );
+
     const toolCallPromises = toolCallStates.map(async (toolCallState) => {
+      console.log(
+        "[hbuilderx] handleToolCallExecution: Dispatching tool call",
+        {
+          toolCallId: toolCallState.toolCallId,
+          functionName: toolCallState.toolCall.function.name,
+        },
+      );
       const response = await dispatch(
         callToolById({ toolCallId: toolCallState.toolCallId }),
       );
@@ -76,6 +131,17 @@ async function handleToolCallExecution(
     });
 
     await Promise.all(toolCallPromises);
+    console.log(
+      "[hbuilderx] handleToolCallExecution: All auto-approved tool calls completed",
+    );
+  } else {
+    console.log(
+      "[hbuilderx] handleToolCallExecution: Not all tools auto-approved, waiting for user approval",
+      {
+        allAutoApproved,
+        toolCallCount: toolCallStates.length,
+      },
+    );
   }
 }
 

@@ -935,44 +935,92 @@ export class Core {
   }
 
   private async handleToolCall(toolCall: ToolCall) {
-    const { config } = await this.configHandler.loadConfig();
-    if (!config) {
-      throw new Error("Config not loaded");
-    }
-
-    const tool = config.tools.find(
-      (t) => t.function.name === toolCall.function.name,
-    );
-
-    if (!tool) {
-      throw new Error(`Tool ${toolCall.function.name} not found`);
-    }
-
-    if (!config.selectedModelByRole.chat) {
-      throw new Error("No chat model selected");
-    }
-
-    // Define a callback for streaming output updates
-    const onPartialOutput = (params: {
-      toolCallId: string;
-      contextItems: ContextItem[];
-    }) => {
-      this.messenger.send("toolCallPartialOutput", params);
-    };
-
-    const result = await callTool(tool, toolCall, {
-      config,
-      ide: this.ide,
-      llm: config.selectedModelByRole.chat,
-      fetch: (url, init) =>
-        fetchwithRequestOptions(url, init, config.requestOptions),
-      tool,
+    console.log("[hbuilderx] handleToolCall: Starting tool call handling", {
       toolCallId: toolCall.id,
-      onPartialOutput,
-      codeBaseIndexer: this.codeBaseIndexer,
+      functionName: toolCall.function.name,
     });
 
-    return result;
+    try {
+      const { config } = await this.configHandler.loadConfig();
+      if (!config) {
+        console.error("[hbuilderx] handleToolCall: Config not loaded");
+        throw new Error("Config not loaded");
+      }
+
+      const tool = config.tools.find(
+        (t) => t.function.name === toolCall.function.name,
+      );
+
+      if (!tool) {
+        console.error("[hbuilderx] handleToolCall: Tool not found in config", {
+          functionName: toolCall.function.name,
+          availableTools: config.tools.map((t) => t.function.name),
+        });
+        throw new Error(`Tool ${toolCall.function.name} not found`);
+      }
+
+      if (!config.selectedModelByRole.chat) {
+        console.error("[hbuilderx] handleToolCall: No chat model selected");
+        throw new Error("No chat model selected");
+      }
+
+      console.log(
+        "[hbuilderx] handleToolCall: Found tool and model, proceeding with tool call",
+        {
+          toolName: tool.function.name,
+          modelTitle: config.selectedModelByRole.chat.title,
+        },
+      );
+
+      // Define a callback for streaming output updates
+      const onPartialOutput = (params: {
+        toolCallId: string;
+        contextItems: ContextItem[];
+      }) => {
+        console.log("[hbuilderx] handleToolCall: Received partial output", {
+          toolCallId: params.toolCallId,
+          contextItemsCount: params.contextItems.length,
+        });
+        this.messenger.send("toolCallPartialOutput", params);
+      };
+
+      const result = await callTool(tool, toolCall, {
+        config,
+        ide: this.ide,
+        llm: config.selectedModelByRole.chat,
+        fetch: (url, init) =>
+          fetchwithRequestOptions(url, init, config.requestOptions),
+        tool,
+        toolCallId: toolCall.id,
+        onPartialOutput,
+        codeBaseIndexer: this.codeBaseIndexer,
+      });
+
+      console.log("[hbuilderx] handleToolCall: Tool call completed", {
+        toolCallId: toolCall.id,
+        functionName: toolCall.function.name,
+        hasError: !!result.errorMessage,
+        contextItemsCount: result.contextItems.length,
+        resultDetails: {
+          errorMessage: result.errorMessage,
+          contextItemsDetails: result.contextItems.map((item) => ({
+            name: item.name,
+            description: item.description,
+            contentLength: item.content?.length || 0,
+          })),
+        },
+      });
+
+      return result;
+    } catch (error: unknown) {
+      console.error("[hbuilderx] handleToolCall: Error occurred", {
+        toolCallId: toolCall.id,
+        functionName: toolCall.function.name,
+        error: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
   }
 
   private async isItemTooBig(item: ContextItemWithId) {

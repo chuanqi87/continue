@@ -825,6 +825,20 @@ export const sessionSlice = createSlice({
         contextItems: ContextItem[];
       }>,
     ) => {
+      console.log(
+        "[hbuilderx] updateToolCallOutput: Updating tool call output",
+        {
+          toolCallId: action.payload.toolCallId,
+          contextItemsCount: action.payload.contextItems.length,
+          contextItemsDetails: action.payload.contextItems.map((item) => ({
+            name: item.name,
+            description: item.description,
+            contentLength: item.content?.length || 0,
+            hasIcon: !!item.icon,
+          })),
+        },
+      );
+
       // Update tool call state and corresponding tool output message
       const toolCallState = findToolCallById(
         state.history,
@@ -832,18 +846,46 @@ export const sessionSlice = createSlice({
       );
       if (toolCallState) {
         toolCallState.output = action.payload.contextItems;
+        console.log(
+          "[hbuilderx] updateToolCallOutput: Updated tool call state",
+          {
+            toolCallId: action.payload.toolCallId,
+            status: toolCallState.status,
+            outputCount: toolCallState.output?.length || 0,
+          },
+        );
+      } else {
+        console.warn(
+          "[hbuilderx] updateToolCallOutput: Tool call state not found",
+          {
+            toolCallId: action.payload.toolCallId,
+          },
+        );
       }
+
       const toolItem = findChatHistoryItemByToolCallId(
         state.history,
         action.payload.toolCallId,
       );
       if (toolItem) {
-        toolItem.message.content = renderContextItems(
-          action.payload.contextItems,
-        );
+        const renderedContent = renderContextItems(action.payload.contextItems);
+        toolItem.message.content = renderedContent;
         toolItem.contextItems = action.payload.contextItems.map((item) =>
           toolCallCtxItemToCtxItemWithId(item, action.payload.toolCallId),
         );
+        console.log(
+          "[hbuilderx] updateToolCallOutput: Updated tool item message",
+          {
+            toolCallId: action.payload.toolCallId,
+            contentLength: toolItem.message.content.length,
+            contentPreview: toolItem.message.content.substring(0, 200) + "...",
+            contextItemsCount: toolItem.contextItems.length,
+          },
+        );
+      } else {
+        console.warn("[hbuilderx] updateToolCallOutput: Tool item not found", {
+          toolCallId: action.payload.toolCallId,
+        });
       }
     },
     cancelToolCall: (
@@ -852,12 +894,26 @@ export const sessionSlice = createSlice({
         toolCallId: string;
       }>,
     ) => {
+      console.log("[hbuilderx] cancelToolCall: Canceling tool call", {
+        toolCallId: action.payload.toolCallId,
+      });
+
       const toolCallState = findToolCallById(
         state.history,
         action.payload.toolCallId,
       );
       if (toolCallState) {
         toolCallState.status = "canceled";
+        console.log(
+          "[hbuilderx] cancelToolCall: Tool call status set to canceled",
+          {
+            toolCallId: action.payload.toolCallId,
+          },
+        );
+      } else {
+        console.warn("[hbuilderx] cancelToolCall: Tool call state not found", {
+          toolCallId: action.payload.toolCallId,
+        });
       }
     },
     errorToolCall: (
@@ -866,12 +922,29 @@ export const sessionSlice = createSlice({
         toolCallId: string;
       }>,
     ) => {
+      console.log(
+        "[hbuilderx] errorToolCall: Setting tool call to error status",
+        {
+          toolCallId: action.payload.toolCallId,
+        },
+      );
+
       const toolCallState = findToolCallById(
         state.history,
         action.payload.toolCallId,
       );
       if (toolCallState) {
         toolCallState.status = "errored";
+        console.log(
+          "[hbuilderx] errorToolCall: Tool call status set to errored",
+          {
+            toolCallId: action.payload.toolCallId,
+          },
+        );
+      } else {
+        console.warn("[hbuilderx] errorToolCall: Tool call state not found", {
+          toolCallId: action.payload.toolCallId,
+        });
       }
     },
     acceptToolCall: (
@@ -880,12 +953,32 @@ export const sessionSlice = createSlice({
         toolCallId: string;
       }>,
     ) => {
+      console.log("[hbuilderx] acceptToolCall: Accepting tool call", {
+        toolCallId: action.payload.toolCallId,
+      });
+
       const toolCallState = findToolCallById(
         state.history,
         action.payload.toolCallId,
       );
       if (toolCallState) {
+        const previousStatus = toolCallState.status;
         toolCallState.status = "done";
+        console.log(
+          "[hbuilderx] acceptToolCall: Tool call status set to done",
+          {
+            toolCallId: action.payload.toolCallId,
+            previousStatus,
+            newStatus: toolCallState.status,
+            functionName: toolCallState.toolCall.function.name,
+            hasOutput: !!toolCallState.output?.length,
+            outputCount: toolCallState.output?.length || 0,
+          },
+        );
+      } else {
+        console.warn("[hbuilderx] acceptToolCall: Tool call state not found", {
+          toolCallId: action.payload.toolCallId,
+        });
       }
     },
     setToolCallCalling: (
@@ -894,12 +987,36 @@ export const sessionSlice = createSlice({
         toolCallId: string;
       }>,
     ) => {
+      console.log(
+        "[hbuilderx] setToolCallCalling: Setting tool call to calling status",
+        {
+          toolCallId: action.payload.toolCallId,
+        },
+      );
+
       const toolCallState = findToolCallById(
         state.history,
         action.payload.toolCallId,
       );
       if (toolCallState) {
+        const previousStatus = toolCallState.status;
         toolCallState.status = "calling";
+        console.log(
+          "[hbuilderx] setToolCallCalling: Tool call status set to calling",
+          {
+            toolCallId: action.payload.toolCallId,
+            previousStatus,
+            newStatus: toolCallState.status,
+            functionName: toolCallState.toolCall.function.name,
+          },
+        );
+      } else {
+        console.warn(
+          "[hbuilderx] setToolCallCalling: Tool call state not found",
+          {
+            toolCallId: action.payload.toolCallId,
+          },
+        );
       }
     },
     setMode: (state, action: PayloadAction<MessageModes>) => {

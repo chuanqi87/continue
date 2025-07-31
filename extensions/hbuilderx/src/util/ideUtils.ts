@@ -80,6 +80,45 @@ export class HbuilderXIdeUtils {
   getUniqueId() {
     return getUniqueId();
   }
+
+  async writeFile(path: string, contents: string): Promise<void> {
+    console.log("[hbuilderx] writeFile: Starting file write", {
+      path,
+      contentLength: contents.length,
+    });
+
+    try {
+      // 使用 Node.js fs 实现替代 HBuilderX API
+      const filePath = uriToFsPath(path);
+
+      // 确保目录存在
+      const pathParts = filePath.split("/");
+      const fileName = pathParts.pop();
+      const dirPath = pathParts.join("/");
+
+      if (dirPath && !fs.existsSync(dirPath)) {
+        console.log("[hbuilderx] writeFile: Creating directory", { dirPath });
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+
+      // 使用 fs.promises.writeFile 写入文件
+      await fs.promises.writeFile(filePath, contents, "utf8");
+
+      console.log("[hbuilderx] writeFile: File written successfully", {
+        path,
+        filePath,
+        contentLength: contents.length,
+      });
+    } catch (error) {
+      console.error("[hbuilderx] writeFile: Failed to write file", {
+        path,
+        error: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
+  }
+
   // showSuggestion(uri: vscode.Uri, range: Range, suggestion: string) {
   //   showSuggestionInEditor(
   //     uri,

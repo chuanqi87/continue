@@ -1,17 +1,34 @@
 import { getUriDescription } from "../../util/uri";
 
 import { ToolImpl } from ".";
-import { throwIfFileExceedsHalfOfContext } from "./readFileLimit";
 
 export const readCurrentlyOpenFileImpl: ToolImpl = async (args, extras) => {
   const result = await extras.ide.getCurrentFile();
 
   if (result) {
-    await throwIfFileExceedsHalfOfContext(
-      result.path,
-      result.contents,
-      extras.config.selectedModelByRole.chat,
-    );
+    // Try to check file size limit, but don't fail if token counting fails
+    // try {
+    //   await throwIfFileExceedsHalfOfContext(
+    //     result.path,
+    //     result.contents,
+    //     extras.config.selectedModelByRole.chat,
+    //   );
+    //   console.log(
+    //     "[hbuilderx] readCurrentlyOpenFileImpl: File size check passed",
+    //   );
+    // } catch (tokenError) {
+    //   console.warn(
+    //     "[hbuilderx] readCurrentlyOpenFileImpl: Token counting failed, skipping size check",
+    //     {
+    //       filepath: result.path,
+    //       error:
+    //         tokenError instanceof Error
+    //           ? tokenError.message
+    //           : String(tokenError),
+    //     },
+    //   );
+    //   // Continue with the file read even if token counting fails
+    // }
 
     const { relativePathOrBasename, last2Parts, baseName } = getUriDescription(
       result.path,

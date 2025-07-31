@@ -4,7 +4,7 @@ import { getUriPathBasename } from "core/util/uri";
 const hx = require("hbuilderx");
 
 import { VerticalDiffManager } from "../diff/vertical/manager";
-import { HbuilderXIde } from "../HbuilderXIde";
+import { HbuilderXIde } from "../HBuilderXIde";
 import { HbuilderXWebviewProtocol } from "../webviewProtocol";
 
 export interface ApplyToFileOptions {
