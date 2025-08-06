@@ -30,13 +30,8 @@ export function useOnboardingCard(): UseOnboardingCard {
 
   let show: boolean;
 
-  // Always show if we explicitly want to, e.g. passing free trial
-  // and setting up keys
-  if (onboardingCard.show) {
-    show = true;
-  } else {
-    show = onboardingStatus !== "Completed" && !hasDismissedOnboardingCard;
-  }
+  // 屏蔽OnboardingCard显示
+  show = false;
 
   async function open(tab?: OnboardingModes) {
     navigate("/");

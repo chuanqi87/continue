@@ -318,6 +318,7 @@ export class VerticalDiffManager {
       hasRange: !!range,
       hasNewCode: !!newCode,
       toolCallId,
+      rulesToIncludeCount: rulesToInclude?.length || 0,
     });
 
     try {
@@ -331,7 +332,19 @@ export class VerticalDiffManager {
       }
 
       const fileUri = editor.document.uri.toString();
-      console.log("[hbuilderx] streamEdit 获取编辑器", { fileUri });
+      console.log("[hbuilderx] streamEdit 获取编辑器", {
+        fileUri,
+        documentLineCount: editor.document.lineCount,
+        selection: editor.selection
+          ? {
+              startLine: editor.selection.start.line,
+              startCharacter: editor.selection.start.character,
+              endLine: editor.selection.end.line,
+              endCharacter: editor.selection.end.character,
+              isEmpty: editor.selection.isEmpty,
+            }
+          : null,
+      });
 
       let startLine, endLine: number;
 
@@ -341,6 +354,8 @@ export class VerticalDiffManager {
         console.log("[hbuilderx] streamEdit 使用指定范围", {
           startLine,
           endLine,
+          rangeStartCharacter: range.start.character,
+          rangeEndCharacter: range.end.character,
         });
       } else {
         startLine = editor.selection.start.line;
@@ -348,13 +363,28 @@ export class VerticalDiffManager {
         console.log("[hbuilderx] streamEdit 使用选择范围", {
           startLine,
           endLine,
+          selectionStartCharacter: editor.selection.start.character,
+          selectionEndCharacter: editor.selection.end.character,
         });
       }
 
       // Check for existing handlers in the same file the new one will be created in
       const existingHandler = this.getHandlerForFile(fileUri);
 
+      console.log("[hbuilderx] streamEdit 检查现有处理器", {
+        hasExistingHandler: !!existingHandler,
+        quickEdit,
+      });
+
       if (existingHandler) {
+        console.log("[hbuilderx] streamEdit 现有处理器信息", {
+          existingHandlerRange: {
+            startLine: existingHandler.range.start.line,
+            endLine: existingHandler.range.end.line,
+          },
+          currentRange: { startLine, endLine },
+        });
+
         if (quickEdit) {
           // Previous diff was a quickEdit
           // Check if user has highlighted a range
@@ -367,10 +397,23 @@ export class VerticalDiffManager {
             startLine !== existingHandler.range.start.line ||
             endLine !== existingHandler.range.end.line;
 
+          console.log("[hbuilderx] streamEdit quickEdit 范围检查", {
+            rangeBool,
+            newRangeBool,
+            startLine,
+            endLine,
+            existingStartLine: existingHandler.range.start.line,
+            existingEndLine: existingHandler.range.end.line,
+          });
+
           if (!rangeBool || !newRangeBool) {
             // User did not highlight a new range -> use start/end from the previous quickEdit
             startLine = existingHandler.range.start.line;
             endLine = existingHandler.range.end.line;
+            console.log("[hbuilderx] streamEdit 使用现有处理器范围", {
+              startLine,
+              endLine,
+            });
           }
         }
 
@@ -383,11 +426,21 @@ export class VerticalDiffManager {
         // startLine += effectiveLineDelta;
         // endLine += effectiveLineDelta;
 
+        console.log("[hbuilderx] streamEdit 清除现有处理器");
         await existingHandler.clear(false);
       }
 
       await new Promise((resolve) => {
         setTimeout(resolve, 150);
+      });
+
+      console.log("[hbuilderx] streamEdit 创建差异处理器", {
+        fileUri,
+        startLine,
+        endLine,
+        instant: isFastApplyModel(llm),
+        hasInput: !!input,
+        hasStreamId: !!streamId,
       });
 
       // Create new handler with determined start/end
@@ -412,11 +465,20 @@ export class VerticalDiffManager {
       );
 
       if (!diffHandler) {
+        console.error("[hbuilderx] streamEdit 创建差异处理器失败");
         console.warn("Issue occurred while creating new vertical diff handler");
         return undefined;
       }
 
+      console.log("[hbuilderx] streamEdit 差异处理器创建成功");
+
       let selectedRange = diffHandler.range;
+
+      console.log("[hbuilderx] streamEdit 初始选择范围", {
+        startLine: selectedRange.start.line,
+        endLine: selectedRange.end.line,
+        isEmpty: selectedRange.isEmpty,
+      });
 
       // Only if the selection is empty, use exact prefix/suffix instead of by line
       if (selectedRange.isEmpty) {
@@ -424,6 +486,12 @@ export class VerticalDiffManager {
           editor.selection.start.with(undefined, 0),
           editor.selection.end.with(undefined, Number.MAX_SAFE_INTEGER),
         );
+        console.log("[hbuilderx] streamEdit 调整空选择范围", {
+          startLine: selectedRange.start.line,
+          endLine: selectedRange.end.line,
+          startCharacter: selectedRange.start.character,
+          endCharacter: selectedRange.end.character,
+        });
       }
 
       const rangeContent = editor.document.getText(selectedRange);
@@ -445,8 +513,19 @@ export class VerticalDiffManager {
         llm.model,
       );
 
+      console.log("[hbuilderx] streamEdit 内容处理", {
+        rangeContentLength: rangeContent.length,
+        prefixLength: prefix.length,
+        suffixLength: suffix.length,
+        contextLength: llm.contextLength,
+        model: llm.model,
+      });
+
       let overridePrompt: ChatMessage[] | undefined;
       if (llm.promptTemplates?.apply) {
+        console.log("[hbuilderx] streamEdit 使用应用模板", {
+          hasPromptTemplate: !!llm.promptTemplates.apply,
+        });
         const rendered = llm.renderPromptTemplate(
           llm.promptTemplates.apply,
           [],
@@ -459,6 +538,13 @@ export class VerticalDiffManager {
           typeof rendered === "string"
             ? [{ role: "user", content: rendered }]
             : rendered;
+        console.log("[hbuilderx] streamEdit 模板渲染完成", {
+          isString: typeof rendered === "string",
+          promptLength:
+            typeof rendered === "string" ? rendered.length : rendered.length,
+        });
+      } else {
+        console.log("[hbuilderx] streamEdit 未使用应用模板");
       }
 
       if (editor.selection) {
@@ -467,14 +553,27 @@ export class VerticalDiffManager {
           editor.selection.active,
           editor.selection.active,
         );
+        console.log("[hbuilderx] streamEdit 清除选择");
       }
 
       hx.commands.executeCommand("setContext", "continue.streamingDiff", true);
 
       this.editDecorationManager.clear();
+      console.log("[hbuilderx] streamEdit 清除编辑装饰");
 
       try {
         const streamedLines: string[] = [];
+
+        console.log("[hbuilderx] streamEdit 开始流式差异处理", {
+          hasRangeContent: !!rangeContent,
+          hasPrefix: !!prefix,
+          hasSuffix: !!suffix,
+          hasRulesToInclude: !!rulesToInclude,
+          hasInput: !!input,
+          language: getMarkdownLanguageTagForFile(fileUri),
+          onlyOneInsertion,
+          hasOverridePrompt: !!overridePrompt,
+        });
 
         async function* recordedStream() {
           const stream = streamDiffLines({
@@ -498,16 +597,29 @@ export class VerticalDiffManager {
           }
         }
 
+        console.log("[hbuilderx] streamEdit 运行差异处理器");
         this.logDiffs = await diffHandler.run(recordedStream());
+
+        console.log("[hbuilderx] streamEdit 差异处理完成", {
+          streamedLinesCount: streamedLines.length,
+          logDiffsCount: this.logDiffs?.length || 0,
+        });
 
         // enable a listener for user edits to file while diff is open
         this.enableDocumentChangeListener();
+        console.log("[hbuilderx] streamEdit 启用文档变更监听器");
 
-        return `${prefix}${streamedLines.join("\n")}${suffix}`;
+        const result = `${prefix}${streamedLines.join("\n")}${suffix}`;
+        console.log("[hbuilderx] streamEdit 返回结果", {
+          resultLength: result.length,
+        });
+        return result;
       } catch (e) {
         console.error("[hbuilderx] streamEdit 内部处理失败", {
           streamId,
           error: e,
+          errorMessage: e instanceof Error ? e.message : String(e),
+          errorStack: e instanceof Error ? e.stack : undefined,
         });
         this.disableDocumentChangeListener();
         const handled = await handleLLMError(e);
@@ -524,9 +636,15 @@ export class VerticalDiffManager {
           "continue.streamingDiff",
           false,
         );
+        console.log("[hbuilderx] streamEdit 设置流式差异上下文为false");
       }
     } catch (error) {
-      console.error("[hbuilderx] streamEdit 失败", { streamId, error });
+      console.error("[hbuilderx] streamEdit 失败", {
+        streamId,
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
