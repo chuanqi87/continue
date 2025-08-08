@@ -30,6 +30,7 @@ export enum LanguageName {
   RESCRIPT = "rescript",
   RUBY = "ruby",
   RUST = "rust",
+  VUE = "vue",
   SYSTEMRDL = "systemrdl",
   TOML = "toml",
   SOLIDITY = "solidity",
@@ -68,7 +69,7 @@ export const supportedLanguages: { [key: string]: LanguageName } = {
   mts: LanguageName.TYPESCRIPT,
   cts: LanguageName.TYPESCRIPT,
   tsx: LanguageName.TSX,
-  // vue: LanguageName.VUE,  // tree-sitter-vue parser is broken
+  vue: LanguageName.VUE, // tree-sitter-vue parser is broken
   // The .wasm file being used is faulty, and yaml is split line-by-line anyway for the most part
   // yaml: LanguageName.YAML,
   // yml: LanguageName.YAML,

@@ -13,7 +13,6 @@ import {
   WEBVIEW_TO_CORE_PASS_THROUGH,
 } from "core/protocol/passThrough";
 import { ApplyManager } from "../apply";
-import { VerticalDiffManager } from "../diff/vertical/manager";
 import { HbuilderXIde } from "../HBuilderXIde";
 import { getControlPlaneSessionInfo } from "../stubs/WorkOsAuthProvider";
 import { handleLLMError } from "../util/errorHandling";
@@ -68,7 +67,6 @@ export class HbuilderXMessenger {
     >,
     private readonly webviewProtocol: HbuilderXWebviewProtocol,
     private readonly ide: HbuilderXIde,
-    private readonly verticalDiffManagerPromise: Promise<VerticalDiffManager>,
     private readonly configHandlerPromise: Promise<ConfigHandler>,
   ) {
     /** WEBVIEW ONLY LISTENERS **/
@@ -121,17 +119,12 @@ export class HbuilderXMessenger {
       });
 
       try {
-        const [verticalDiffManager, configHandler] = await Promise.all([
-          verticalDiffManagerPromise,
-          configHandlerPromise,
-        ]);
-
+        const configHandler = await this.configHandlerPromise;
         console.log("[hbuilderx] applyToFile 依赖项加载完成");
 
         const applyManager = new ApplyManager(
           this.ide,
-          webviewProtocol,
-          verticalDiffManager,
+          this.webviewProtocol,
           configHandler,
         );
 
@@ -308,69 +301,69 @@ export class HbuilderXMessenger {
     });
 
     this.onWebviewOrCore("getIdeSettings", async (msg) => {
-      return ide.getIdeSettings();
+      return this.ide.getIdeSettings();
     });
     this.onWebviewOrCore("getDiff", async (msg) => {
-      return ide.getDiff(msg.data.includeUnstaged);
+      return this.ide.getDiff(msg.data.includeUnstaged);
     });
     this.onWebviewOrCore("getTerminalContents", async (msg) => {
-      return ide.getTerminalContents();
+      return this.ide.getTerminalContents();
     });
     this.onWebviewOrCore("getDebugLocals", async (msg) => {
-      return ide.getDebugLocals(Number(msg.data.threadIndex));
+      return this.ide.getDebugLocals(Number(msg.data.threadIndex));
     });
     this.onWebviewOrCore("getAvailableThreads", async (msg) => {
-      return ide.getAvailableThreads();
+      return this.ide.getAvailableThreads();
     });
     this.onWebviewOrCore("getTopLevelCallStackSources", async (msg) => {
-      return ide.getTopLevelCallStackSources(
+      return this.ide.getTopLevelCallStackSources(
         msg.data.threadIndex,
         msg.data.stackDepth,
       );
     });
     this.onWebviewOrCore("getWorkspaceDirs", async (msg) => {
-      return ide.getWorkspaceDirs();
+      return this.ide.getWorkspaceDirs();
     });
     this.onWebviewOrCore("writeFile", async (msg) => {
-      return ide.writeFile(msg.data.path, msg.data.contents);
+      return this.ide.writeFile(msg.data.path, msg.data.contents);
     });
     this.onWebviewOrCore("showVirtualFile", async (msg) => {
-      return ide.showVirtualFile(msg.data.name, msg.data.content);
+      return this.ide.showVirtualFile(msg.data.name, msg.data.content);
     });
     this.onWebviewOrCore("openFile", async (msg) => {
-      return ide.openFile(msg.data.path);
+      return this.ide.openFile(msg.data.path);
     });
     this.onWebviewOrCore("runCommand", async (msg) => {
-      await ide.runCommand(msg.data.command);
+      await this.ide.runCommand(msg.data.command);
     });
     this.onWebviewOrCore("getSearchResults", async (msg) => {
-      return ide.getSearchResults(msg.data.query);
+      return this.ide.getSearchResults(msg.data.query);
     });
     this.onWebviewOrCore("getFileResults", async (msg) => {
-      return ide.getFileResults(msg.data.pattern);
+      return this.ide.getFileResults(msg.data.pattern);
     });
     this.onWebviewOrCore("subprocess", async (msg) => {
-      return ide.subprocess(msg.data.command, msg.data.cwd);
+      return this.ide.subprocess(msg.data.command, msg.data.cwd);
     });
     this.onWebviewOrCore("getProblems", async (msg) => {
-      return ide.getProblems(msg.data.filepath);
+      return this.ide.getProblems(msg.data.filepath);
     });
     this.onWebviewOrCore("getBranch", async (msg) => {
       const { dir } = msg.data;
-      return ide.getBranch(dir);
+      return this.ide.getBranch(dir);
     });
     this.onWebviewOrCore("getOpenFiles", async (msg) => {
-      return ide.getOpenFiles();
+      return this.ide.getOpenFiles();
     });
     this.onWebviewOrCore("getCurrentFile", async () => {
-      return ide.getCurrentFile();
+      return this.ide.getCurrentFile();
     });
     this.onWebviewOrCore("getPinnedFiles", async (msg) => {
-      return ide.getPinnedFiles();
+      return this.ide.getPinnedFiles();
     });
     this.onWebviewOrCore("showLines", async (msg) => {
       const { filepath, startLine, endLine } = msg.data;
-      return ide.showLines(filepath, startLine, endLine);
+      return this.ide.showLines(filepath, startLine, endLine);
     });
     this.onWebviewOrCore("showToast", (msg) => {
       this.ide.showToast(...msg.data);
@@ -394,57 +387,57 @@ export class HbuilderXMessenger {
       // );
     });
     this.onWebviewOrCore("saveFile", async (msg) => {
-      return await ide.saveFile(msg.data.filepath);
+      return await this.ide.saveFile(msg.data.filepath);
     });
     this.onWebviewOrCore("readFile", async (msg) => {
-      return await ide.readFile(msg.data.filepath);
+      return await this.ide.readFile(msg.data.filepath);
     });
     this.onWebviewOrCore("openUrl", (msg) => {
       hx.env.openExternal(hx.Uri.parse(msg.data));
     });
 
     this.onWebviewOrCore("fileExists", async (msg) => {
-      return await ide.fileExists(msg.data.filepath);
+      return await this.ide.fileExists(msg.data.filepath);
     });
 
     this.onWebviewOrCore("gotoDefinition", async (msg) => {
-      return await ide.gotoDefinition(msg.data.location);
+      return await this.ide.gotoDefinition(msg.data.location);
     });
 
     this.onWebviewOrCore("getFileStats", async (msg) => {
-      return await ide.getFileStats(msg.data.files);
+      return await this.ide.getFileStats(msg.data.files);
     });
 
     this.onWebviewOrCore("getGitRootPath", async (msg) => {
-      return await ide.getGitRootPath(msg.data.dir);
+      return await this.ide.getGitRootPath(msg.data.dir);
     });
 
     this.onWebviewOrCore("listDir", async (msg) => {
-      return await ide.listDir(msg.data.dir);
+      return await this.ide.listDir(msg.data.dir);
     });
 
     this.onWebviewOrCore("getRepoName", async (msg) => {
-      return await ide.getRepoName(msg.data.dir);
+      return await this.ide.getRepoName(msg.data.dir);
     });
 
     this.onWebviewOrCore("getTags", async (msg) => {
-      return await ide.getTags(msg.data);
+      return await this.ide.getTags(msg.data);
     });
 
     this.onWebviewOrCore("getIdeInfo", async (msg) => {
-      return await ide.getIdeInfo();
+      return await this.ide.getIdeInfo();
     });
 
     this.onWebviewOrCore("isTelemetryEnabled", async (msg) => {
-      return await ide.isTelemetryEnabled();
+      return await this.ide.isTelemetryEnabled();
     });
 
     this.onWebviewOrCore("getWorkspaceConfigs", async (msg) => {
-      return await ide.getWorkspaceConfigs();
+      return await this.ide.getWorkspaceConfigs();
     });
 
     this.onWebviewOrCore("getUniqueId", async (msg) => {
-      return await ide.getUniqueId();
+      return await this.ide.getUniqueId();
     });
 
     this.onWebviewOrCore("reportError", async (msg) => {

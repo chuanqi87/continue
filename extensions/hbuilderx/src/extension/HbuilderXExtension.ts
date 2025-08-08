@@ -6,7 +6,6 @@ import { InProcessMessenger } from "core/protocol/messenger";
 import { v4 as uuidv4 } from "uuid";
 import { registerAllCommands } from "../commands";
 import { ContinueGUIWebviewViewProvider } from "../ContinueGUIWebviewViewProvider";
-import { VerticalDiffManager } from "../diff/vertical/manager";
 import { HbuilderXIde } from "../HBuilderXIde";
 import EditDecorationManager from "../quickEdit/EditDecorationManager";
 import { UriEventHandler } from "../stubs/uriHandler";
@@ -22,7 +21,6 @@ export class HbuilderXExtension {
   private sidebar: ContinueGUIWebviewViewProvider;
   private core: Core;
   private configHandler: ConfigHandler;
-  private verticalDiffManager: VerticalDiffManager;
   private editDecorationManager: EditDecorationManager;
   private workOsAuthProvider: WorkOsAuthProvider;
   private uriHandler = new UriEventHandler();
@@ -55,18 +53,6 @@ export class HbuilderXExtension {
     this.windowId = uuidv4();
     console.log("[hbuilderx] 生成windowId:", this.windowId);
 
-    // TODO: 需要实现
-    // Dependencies of core
-    console.log("[hbuilderx] 创建verticalDiffManager Promise");
-    let resolveVerticalDiffManager: any = undefined;
-    const verticalDiffManagerPromise = new Promise<VerticalDiffManager>(
-      (resolve) => {
-        console.log(
-          "[hbuilderx] verticalDiffManagerPromise 创建完成，等待resolve",
-        );
-        resolveVerticalDiffManager = resolve;
-      },
-    );
     console.log("[hbuilderx] 创建configHandler Promise");
     let resolveConfigHandler: any = undefined;
     const configHandlerPromise = new Promise<ConfigHandler>((resolve) => {
@@ -101,7 +87,6 @@ export class HbuilderXExtension {
       inProcessMessenger,
       this.sidebar.webviewProtocol,
       this.ide,
-      verticalDiffManagerPromise,
       configHandlerPromise,
     );
 
@@ -114,15 +99,6 @@ export class HbuilderXExtension {
 
     console.log("[hbuilderx] 开始加载配置");
     this.configHandler.loadConfig();
-
-    console.log("[hbuilderx] 创建VerticalDiffManager");
-    this.verticalDiffManager = new VerticalDiffManager(
-      this.sidebar.webviewProtocol,
-      this.editDecorationManager,
-    );
-    console.log("[hbuilderx] 解析verticalDiffManager");
-    resolveVerticalDiffManager?.(this.verticalDiffManager);
-    console.log("[hbuilderx] verticalDiffManager 已解析");
 
     // setupRemoteConfigSync(
     //   this.configHandler.reloadConfig.bind(this.configHandler),
@@ -337,5 +313,16 @@ export class HbuilderXExtension {
     //       void this.core.invoke("config/ideSettingsUpdate", settings);
     //     }
     //   });
+  }
+
+  dispose() {
+    console.log("[hbuilderx] 开始清理HbuilderXExtension");
+    try {
+      this.workOsAuthProvider.dispose();
+      // EditDecorationManager没有dispose方法
+      console.log("[hbuilderx] HbuilderXExtension清理完成");
+    } catch (error) {
+      console.error("[hbuilderx] 清理HbuilderXExtension时出错:", error);
+    }
   }
 }

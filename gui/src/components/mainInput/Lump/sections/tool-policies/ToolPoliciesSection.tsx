@@ -47,7 +47,7 @@ export const ToolPoliciesSection = () => {
     mode === "chat"
       ? "All tools disabled (Chat)"
       : mode === "plan"
-        ? "Read-only/MCP tools available (Plan)"
+        ? "Read-only tools + Create File + MCP tools available (Plan)"
         : "All tools available (Agent)";
 
   return (

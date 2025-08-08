@@ -3,7 +3,7 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { Tool } from "core";
-import { BUILT_IN_GROUP_NAME } from "core/tools/builtIn";
+import { BUILT_IN_GROUP_NAME, BuiltInToolNames } from "core/tools/builtIn";
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "../../../../../redux/hooks";
@@ -13,6 +13,9 @@ import {
 } from "../../../../../redux/slices/uiSlice";
 import { ToolTip } from "../../../../gui/Tooltip";
 import { useFontSize } from "../../../../ui/font";
+
+// Plan模式下允许的非只读工具白名单
+const PLAN_MODE_ALLOWED_NON_READONLY_TOOLS = [BuiltInToolNames.CreateNewFile];
 
 interface ToolDropdownItemProps {
   tool: Tool;
@@ -50,7 +53,10 @@ function ToolPolicyItem(props: ToolDropdownItemProps) {
     !props.isGroupEnabled ||
     (mode === "plan" &&
       props.tool.group === BUILT_IN_GROUP_NAME &&
-      !props.tool.readonly);
+      !props.tool.readonly &&
+      !PLAN_MODE_ALLOWED_NON_READONLY_TOOLS.includes(
+        props.tool.function.name as BuiltInToolNames,
+      ));
 
   if (!policy) {
     return null;

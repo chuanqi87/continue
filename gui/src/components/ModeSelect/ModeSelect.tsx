@@ -135,7 +135,7 @@ export function ModeSelect() {
                   zIndex: 200001,
                 }}
               >
-                Read-only/MCP tools available
+                Read-only tools + Create File + MCP tools available
               </ToolTip>
             </div>
             {agentModeSupported ? (

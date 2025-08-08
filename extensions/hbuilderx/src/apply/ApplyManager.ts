@@ -1,9 +1,10 @@
+import { DiffLine } from "core";
 import { ConfigHandler } from "core/config/ConfigHandler";
 import { applyCodeBlock } from "core/edit/lazy/applyCodeBlock";
 import { getUriPathBasename } from "core/util/uri";
-const hx = require("hbuilderx");
+const hx = require("vscode");
 
-import { VerticalDiffManager } from "../diff/vertical/manager";
+import { PreviewEditManager } from "../diff/PreviewEditManager";
 import { HbuilderXIde } from "../HBuilderXIde";
 import { HbuilderXWebviewProtocol } from "../webviewProtocol";
 
@@ -15,13 +16,13 @@ export interface ApplyToFileOptions {
 }
 
 /**
- * Handles applying text/code to files including diff generation and streaming
+ * 使用HBuilderX原生previewEdit接口的应用管理器
+ * 集成了tree-sitter校验、diff格式检测和LLM智能对比等完整逻辑
  */
 export class ApplyManager {
   constructor(
     private readonly ide: HbuilderXIde,
     private readonly webviewProtocol: HbuilderXWebviewProtocol,
-    private readonly verticalDiffManager: VerticalDiffManager,
     private readonly configHandler: ConfigHandler,
   ) {}
 
@@ -52,37 +53,34 @@ export class ApplyManager {
         await this.ensureFileOpen(filepath);
       }
 
-      const { activeTextEditor } = hx.window;
-      if (!activeTextEditor) {
+      const editor = await hx.window.getActiveTextEditor();
+      if (!editor) {
         console.error("[hbuilderx] 没有活动编辑器，无法应用编辑");
         hx.window.showErrorMessage("No active editor to apply edits to");
         return;
       }
 
       console.log("[hbuilderx] 获取到活动编辑器", {
-        documentUri: activeTextEditor.document.uri.toString(),
-        documentLength: activeTextEditor.document.getText().length,
+        documentUri: editor.document.uri.toString(),
+        documentLength: editor.document.getText().length,
       });
 
-      const hasExistingDocument = !!activeTextEditor.document.getText().trim();
+      const currentContent = editor.document.getText();
+      const hasExistingDocument = !!currentContent.trim();
       console.log("[hbuilderx] 文档状态检查", { hasExistingDocument });
 
       if (hasExistingDocument) {
         console.log("[hbuilderx] 处理现有文档");
         await this.handleExistingDocument(
-          activeTextEditor,
+          editor,
+          currentContent,
           text,
           streamId,
           toolCallId,
         );
       } else {
         console.log("[hbuilderx] 处理空文档");
-        await this.handleEmptyDocument(
-          activeTextEditor,
-          text,
-          streamId,
-          toolCallId,
-        );
+        await this.handleEmptyDocument(editor, text, streamId, toolCallId);
       }
 
       console.log("[hbuilderx] ApplyManager.applyToFile 完成");
@@ -142,6 +140,7 @@ export class ApplyManager {
 
   private async handleExistingDocument(
     editor: any,
+    currentContent: string,
     text: string,
     streamId: string,
     toolCallId?: string,
@@ -172,34 +171,53 @@ export class ApplyManager {
 
       console.log("[hbuilderx] 使用模型", { modelTitle: llm.title });
 
-      console.log("[hbuilderx] 开始生成代码块应用");
+      const filename = getUriPathBasename(editor.document.uri.toString());
+      console.log("[hbuilderx] 开始智能代码块应用分析", { filename });
+
+      // 使用applyCodeBlock进行智能判断和处理
+      const abortController = new AbortController();
       const { isInstantApply, diffLinesGenerator } = await applyCodeBlock(
-        editor.document.getText(),
+        currentContent,
         text,
-        getUriPathBasename(editor.document.uri.toString()),
+        filename,
         llm,
+        abortController,
       );
 
-      console.log("[hbuilderx] 代码块应用生成完成", { isInstantApply });
+      console.log("[hbuilderx] 代码块应用分析完成", {
+        isInstantApply,
+        analysisType: isInstantApply
+          ? "即时应用(Tree-sitter/Diff)"
+          : "LLM智能对比",
+      });
+
+      // 创建PreviewEditManager来处理预览
+      const previewEditManager = new PreviewEditManager({
+        onStatusUpdate: async (status, numDiffs, fileContent) => {
+          await this.webviewProtocol.request("updateApplyState", {
+            streamId,
+            status: status || "streaming",
+            numDiffs: numDiffs || 0,
+            fileContent: fileContent || text,
+            toolCallId,
+          });
+        },
+      });
 
       if (isInstantApply) {
-        console.log("[hbuilderx] 执行即时应用");
-        await this.verticalDiffManager.streamDiffLines(
+        console.log(
+          "[hbuilderx] 执行即时应用 - 使用Tree-sitter分析或Diff格式检测",
+        );
+        await this.handleInstantApply(
+          editor,
           diffLinesGenerator,
-          isInstantApply,
+          previewEditManager,
           streamId,
           toolCallId,
         );
       } else {
-        console.log("[hbuilderx] 执行非即时应用差异处理");
-        await this.handleNonInstantDiff(
-          editor,
-          text,
-          llm,
-          streamId,
-          this.verticalDiffManager,
-          toolCallId,
-        );
+        console.log("[hbuilderx] 执行智能差异处理 - 使用LLM进行对比分析");
+        await this.handleIntelligentDiff(editor, text, previewEditManager);
       }
 
       console.log("[hbuilderx] 处理现有文档完成", { streamId });
@@ -210,63 +228,67 @@ export class ApplyManager {
   }
 
   /**
-   * Creates a prompt for applying code edits
+   * 处理即时应用 - 通过Tree-sitter语法分析或Diff格式检测确定的更改
    */
-  private getApplyPrompt(text: string): string {
-    return `The following code was suggested as an edit:\n\`\`\`\n${text}\n\`\`\`\nPlease apply it to the previous code.`;
-  }
-
-  private async handleNonInstantDiff(
+  private async handleInstantApply(
     editor: any,
-    text: string,
-    llm: any,
+    diffLinesGenerator: AsyncGenerator<DiffLine>,
+    previewEditManager: PreviewEditManager,
     streamId: string,
-    verticalDiffManager: VerticalDiffManager,
     toolCallId?: string,
   ) {
-    console.log("[hbuilderx] 处理非即时差异开始", { streamId });
+    console.log("[hbuilderx] handleInstantApply 开始");
 
     try {
-      const { config } = await this.configHandler.loadConfig();
-      if (!config) {
-        console.error("[hbuilderx] 配置未加载");
-        hx.window.showErrorMessage("Config not loaded");
-        return;
+      // 收集所有diff行
+      const diffLines: DiffLine[] = [];
+      for await (const diffLine of diffLinesGenerator) {
+        diffLines.push(diffLine);
       }
 
-      const prompt = this.getApplyPrompt(text);
-      console.log("[hbuilderx] 生成应用提示", { promptLength: prompt.length });
+      console.log("[hbuilderx] 收集到diff行数:", diffLines.length);
 
-      const fullEditorRange = new hx.Range(
-        0,
-        0,
-        editor.document.lineCount - 1,
-        editor.document.lineAt(editor.document.lineCount - 1).text.length,
+      // 使用PreviewEditManager进行流式差异处理
+      async function* generateDiffLines() {
+        for (const diffLine of diffLines) {
+          yield diffLine;
+        }
+      }
+
+      await previewEditManager.applyStreamDiffs(
+        editor.document.uri.fsPath,
+        generateDiffLines(),
       );
-      const rangeToApplyTo = editor.selection.isEmpty
-        ? fullEditorRange
-        : editor.selection;
 
-      console.log("[hbuilderx] 确定应用范围", {
-        isFullDocument: editor.selection.isEmpty,
-        rangeStartLine: rangeToApplyTo.start.line,
-        rangeEndLine: rangeToApplyTo.end.line,
-      });
-
-      console.log("[hbuilderx] 开始流式编辑");
-      await verticalDiffManager.streamEdit({
-        input: prompt,
-        llm,
-        streamId,
-        range: rangeToApplyTo,
-        newCode: text,
-        toolCallId,
-        rulesToInclude: undefined, // No rules for apply
-      });
-
-      console.log("[hbuilderx] 处理非即时差异完成", { streamId });
+      console.log("[hbuilderx] handleInstantApply 完成");
     } catch (error) {
-      console.error("[hbuilderx] 处理非即时差异失败", { streamId, error });
+      console.error("[hbuilderx] handleInstantApply 失败", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 处理智能差异 - 通过LLM进行智能对比和分析
+   */
+  private async handleIntelligentDiff(
+    editor: any,
+    newText: string,
+    previewEditManager: PreviewEditManager,
+  ) {
+    console.log("[hbuilderx] handleIntelligentDiff 开始");
+
+    try {
+      const currentContent = editor.document.getText();
+      const fileUri = editor.document.uri.fsPath;
+
+      console.log("[hbuilderx] 执行智能文本差异对比");
+
+      // 使用PreviewEditManager进行文本差异处理
+      await previewEditManager.applyTextDiff(fileUri, currentContent, newText);
+
+      console.log("[hbuilderx] handleIntelligentDiff 完成");
+    } catch (error) {
+      console.error("[hbuilderx] handleIntelligentDiff 失败", error);
       throw error;
     }
   }

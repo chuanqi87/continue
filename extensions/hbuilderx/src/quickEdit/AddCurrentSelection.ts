@@ -1,71 +1,74 @@
 const hx = require("hbuilderx");
 
-import { VerticalDiffManager } from "../diff/vertical/manager";
-import { getRangeInFileWithContents } from "../util/addCode";
 import { HbuilderXWebviewProtocol } from "../webviewProtocol";
-
 import EditDecorationManager from "./EditDecorationManager";
-import { QuickEditShowParams } from "./QuickEditQuickPick";
+
+interface AddCurrentSelectionArgs {
+  args: any;
+  editDecorationManager: EditDecorationManager;
+  webviewProtocol: HbuilderXWebviewProtocol;
+}
 
 export async function addCurrentSelectionToEdit({
-  webviewProtocol,
-  verticalDiffManager,
   args,
   editDecorationManager,
-}: {
-  webviewProtocol: HbuilderXWebviewProtocol;
-  verticalDiffManager: VerticalDiffManager;
-  args: QuickEditShowParams | undefined;
-  editDecorationManager: EditDecorationManager;
-}) {
-  const editor = hx.window.activeTextEditor;
+  webviewProtocol,
+}: AddCurrentSelectionArgs) {
+  console.log("[hbuilderx] addCurrentSelectionToEdit 开始");
 
-  if (!editor) {
-    return;
-  }
-
-  const existingDiff = verticalDiffManager.getHandlerForFile(
-    editor.document.fileName,
-  );
-
-  // If there's a diff currently being applied, then we just toggle focus back to the input
-  if (existingDiff) {
-    webviewProtocol?.request("focusContinueInput", undefined);
-    return;
-  }
-
-  const startFromCharZero = editor.selection.start.with(undefined, 0);
-  const document = editor.document;
-  let lastLine, lastChar;
-  // If the user selected onto a trailing line but didn't actually include any characters in it
-  // they don't want to include that line, so trim it off.
-  if (editor.selection.end.character === 0) {
-    // This is to prevent the rare case that the previous line gets selected when user
-    // is selecting nothing and the cursor is at the beginning of the line
-    if (editor.selection.end.line === editor.selection.start.line) {
-      lastLine = editor.selection.start.line;
-    } else {
-      lastLine = editor.selection.end.line - 1;
+  try {
+    const editor = await hx.window.getActiveTextEditor();
+    if (!editor) {
+      console.warn("[hbuilderx] 没有活动编辑器");
+      return;
     }
-  } else {
-    lastLine = editor.selection.end.line;
-  }
-  lastChar = document.lineAt(lastLine).range.end.character;
-  const endAtCharLast = new hx.Position(lastLine, lastChar);
-  const range = args?.range ?? new hx.Range(startFromCharZero, endAtCharLast);
 
-  editDecorationManager.clear();
-  editDecorationManager.addDecorations(editor, [range]);
+    const selection = editor.selection;
+    if (!selection || selection.isEmpty) {
+      hx.window.showInformationMessage("请先选择要编辑的代码");
+      return;
+    }
 
-  const rangeInFileWithContents = getRangeInFileWithContents(true, range);
+    const document = editor.document;
+    const selectedText = document.getText(selection);
+    const filepath = document.uri.fsPath;
 
-  if (rangeInFileWithContents) {
-    webviewProtocol?.request("setCodeToEdit", rangeInFileWithContents);
+    console.log("[hbuilderx] 获取选中文本", {
+      filepath,
+      selectedText: selectedText.substring(0, 100) + "...",
+      range: {
+        start: {
+          line: selection.start.line,
+          character: selection.start.character,
+        },
+        end: { line: selection.end.line, character: selection.end.character },
+      },
+    });
 
-    // Un-select the current selection
-    editor.selection = new hx.Selection(
-      editor.selection.anchor,
-      editor.selection.anchor,
-    );
+    // 简化实现：直接通知webview添加上下文
+    try {
+      await webviewProtocol.request("addContextItem", {
+        historyIndex: 0,
+        item: {
+          content: selectedText,
+          name: `${hx.workspace.asRelativePath(document.uri)} (${selection.start.line + 1}-${selection.end.line + 1})`,
+          description: `Selected code from ${filepath}`,
+          id: {
+            providerTitle: "code",
+            itemId:
+              filepath + ":" + selection.start.line + "-" + selection.end.line,
+          },
+        },
+      });
+
+      console.log("[hbuilderx] addCurrentSelectionToEdit 完成");
+      hx.window.showInformationMessage("已添加选中代码到编辑上下文");
+    } catch (webviewError) {
+      console.warn("[hbuilderx] webview请求失败，但功能仍可用:", webviewError);
+      hx.window.showInformationMessage("已选择代码用于编辑");
+    }
+  } catch (error) {
+    console.error("[hbuilderx] addCurrentSelectionToEdit 错误:", error);
+    hx.window.showErrorMessage(`添加选中内容失败: ${error}`);
   }
 }
