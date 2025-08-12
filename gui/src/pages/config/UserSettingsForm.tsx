@@ -100,7 +100,8 @@ export function UserSettingsForm() {
     config.experimental?.enableStaticContextualization ?? false;
 
   const allowAnonymousTelemetry = config.allowAnonymousTelemetry ?? true;
-  const disableIndexing = config.disableIndexing ?? false;
+  // Default to indexing disabled when value is absent
+  const disableIndexing = config.disableIndexing ?? true;
 
   // const useAutocompleteCache = config.tabAutocompleteOptions?.useCache ?? true;
   // const useChromiumForDocsCrawling =

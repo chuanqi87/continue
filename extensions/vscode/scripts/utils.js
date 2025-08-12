@@ -323,8 +323,10 @@ async function downloadSqliteBinary(target) {
     "win32-x64":
       "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-win32-x64.tar.gz",
   }[target];
+  const outPath = "../../core/node_modules/sqlite3/build.tar.gz";
+  // Retry and HTTP/1.1 fallback to avoid sporadic HTTP/2 issues
   execCmdSync(
-    `curl -L -o ../../core/node_modules/sqlite3/build.tar.gz ${downloadUrl}`,
+    `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${outPath} ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${outPath} ${downloadUrl}`,
   );
   execCmdSync("cd ../../core/node_modules/sqlite3 && tar -xvzf build.tar.gz");
   fs.unlinkSync("../../core/node_modules/sqlite3/build.tar.gz");

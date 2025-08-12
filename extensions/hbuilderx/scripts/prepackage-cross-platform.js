@@ -26,6 +26,8 @@ const {
   downloadSqliteBinary,
   copyTokenizers,
   copyScripts,
+  copyModels,
+  copySupportAssets,
 } = require("./utils");
 
 // Clear folders that will be packaged to ensure clean slate
@@ -95,6 +97,9 @@ async function package(target, os, arch, exe) {
   // Build gui and copy to extensions
   await buildGui(ghAction());
 
+  // Copy supporting assets (media/tutorial)
+  await copySupportAssets();
+
   // Assets
   // Copy tree-sitter-wasm files
   await copyTreeSitterWasms();
@@ -112,6 +117,9 @@ async function package(target, os, arch, exe) {
   // Copy Linux scripts
   await copyScripts();
 
+  // Copy models used in VSCode into HBuilderX
+  await copyModels();
+
   // *** Install @lancedb binary ***
   const lancePackageToInstall = {
     "darwin-arm64": "@lancedb/vectordb-darwin-arm64",
@@ -126,10 +134,6 @@ async function package(target, os, arch, exe) {
     "@lancedb",
   );
   // *** esbuild ***
-  // await installNodeModuleInTempDirAndCopyToCurrent(
-  //   "esbuild@0.17.19",
-  //   "@esbuild",
-  // );
   await downloadEsbuildBinary(target);
 
   // *** sqlite ***

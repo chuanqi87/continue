@@ -18,11 +18,13 @@ import type {
 import * as child_process from "node:child_process";
 import { exec } from "node:child_process";
 
+import * as fs from "fs";
+import * as path from "path";
 import * as URI from "uri-js";
 import { Repository } from "./otherExtensions/git";
 import { SecretStorage } from "./stubs/SecretStorage";
 import { NodeFileType } from "./util/fsUtil";
-import { openEditorAndRevealRange } from "./util/hbuilderx";
+import { getExtensionUri, openEditorAndRevealRange } from "./util/hbuilderx";
 import { HbuilderXIdeUtils } from "./util/ideUtils";
 import { getExtensionVersion } from "./util/util";
 import { HbuilderXWebviewProtocol } from "./webviewProtocol";
@@ -573,18 +575,16 @@ class HbuilderXIde implements IDE {
     );
     //TODO: 需要优化，获取当前工作目录
     const relativeDir = hx.Uri.parse(dirUri).fsPath;
-    const ripGrepPath = hx.Uri.parse(
-      "/Applications/HBuilderX-Alpha.app/Contents/HBuilderX/plugins/ripgrep/bin/rg",
-    );
+    const ripgrepPath = this.resolveRipgrepPath();
 
     console.log(
       "[hbuilderx] 启动 ripgrep 进程，工作目录:",
       relativeDir,
       "可执行文件:",
-      ripGrepPath.fsPath,
+      ripgrepPath,
     );
 
-    const p = child_process.spawn(ripGrepPath.fsPath, args, {
+    const p = child_process.spawn(ripgrepPath, args, {
       cwd: relativeDir,
     });
     let output = "";
@@ -623,6 +623,81 @@ class HbuilderXIde implements IDE {
         }
       });
     });
+  }
+
+  private resolveRipgrepPath(): string {
+    const exe = process.platform === "win32" ? ".exe" : "";
+    try {
+      const extensionDir = getExtensionUri();
+
+      const candidates: string[] = [];
+
+      if (extensionDir && typeof extensionDir === "string") {
+        // 部署状态：打包后在 out/node_modules 下
+        candidates.push(
+          path.join(
+            extensionDir,
+            "out",
+            "node_modules",
+            "@vscode",
+            "ripgrep",
+            "bin",
+            `rg${exe}`,
+          ),
+        );
+
+        // 调试状态：扩展目录/工作区 node_modules
+        candidates.push(
+          path.join(
+            extensionDir,
+            "node_modules",
+            "@vscode",
+            "ripgrep",
+            "bin",
+            `rg${exe}`,
+          ),
+        );
+
+        // 仓库结构：continue/extensions/vscode/node_modules
+        candidates.push(
+          path.join(
+            extensionDir,
+            "..",
+            "vscode",
+            "node_modules",
+            "@vscode",
+            "ripgrep",
+            "bin",
+            `rg${exe}`,
+          ),
+        );
+      }
+
+      for (const c of candidates) {
+        if (c && fs.existsSync(c)) {
+          console.log("[hbuilderx] 解析到 ripgrep 路径:", c);
+          return c;
+        }
+      }
+
+      // 兜底：HBuilderX 自带路径（macOS）
+      const macBuiltin =
+        "/Applications/HBuilderX-Alpha.app/Contents/HBuilderX/plugins/ripgrep/bin/rg";
+      if (process.platform === "darwin" && fs.existsSync(macBuiltin)) {
+        console.warn(
+          "[hbuilderx] 扩展内未找到 ripgrep，回退到 HBuilderX 内置路径:",
+          macBuiltin,
+        );
+        return macBuiltin;
+      }
+
+      const message = "未能定位 ripgrep 可执行文件";
+      console.error("[hbuilderx] ", message);
+      throw new Error(message);
+    } catch (err: any) {
+      console.error("[hbuilderx] 解析 ripgrep 路径失败:", err?.message || err);
+      throw err;
+    }
   }
 
   private static MAX_BYTES = 100000;

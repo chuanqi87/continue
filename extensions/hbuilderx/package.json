@@ -395,8 +395,12 @@
     "esbuild-base": "node scripts/esbuild.js",
     "build": "npm run esbuild-base -- --sourcemap",
     "rebuild": "npm run clean && npm run build",
-    "prepackage": "node scripts/prepackage.js",
-    "package": "node scripts/package.js"
+    "prepackage": "node scripts/prepackage-cross-platform.js",
+    "package": "node scripts/package.js",
+    "package-all": "node scripts/package-all.js",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "esbuild-notify": "npm run esbuild-base -- --sourcemap --notify"
   },
   "devDependencies": {
     "@biomejs/biome": "1.6.4",
@@ -474,6 +478,7 @@
     "uuidv4": "^6.2.13",
     "vectordb": "^0.4.20",
     "ws": "^8.13.0",
-    "yarn": "^1.22.21"
+    "yarn": "^1.22.21",
+    "@vscode/ripgrep": "^1.15.9"
   }
 }

@@ -160,6 +160,11 @@ function loadSerializedConfig(
     );
   }
 
+  // Default to indexing disabled if not explicitly set
+  if (config.disableIndexing === undefined) {
+    config.disableIndexing = true;
+  }
+
   if (os.platform() === "linux" && !isSupportedLanceDbCpuTargetForLinux(ide)) {
     config.disableIndexing = true;
   }
