@@ -1,4 +1,5 @@
 import type { ApplyState, DiffLine } from "core";
+import { setPreviewSession } from "./PreviewEditSessionStore";
 const hx = require("vscode");
 
 export interface PreviewEditOptions {
@@ -7,6 +8,8 @@ export interface PreviewEditOptions {
     numDiffs?: ApplyState["numDiffs"],
     fileContent?: ApplyState["fileContent"],
   ) => void;
+  onUserAccept?: (uri: any, edit: any) => void;
+  onUserReject?: (uri: any, edit: any) => void;
 }
 
 /**
@@ -166,6 +169,38 @@ export class PreviewEditManager {
         // 调用HBuilderX的预览编辑接口
         const result = await hx.workspace.previewEdit(workspaceEdit);
 
+        // 如果返回了 PreviewEditSession，保存以供后续 accept/reject 使用
+        if (
+          result &&
+          typeof (result as any).accept === "function" &&
+          typeof (result as any).reject === "function"
+        ) {
+          setPreviewSession(uri.fsPath, result);
+          console.log("[hbuilderx] 捕获 PreviewEditSession 并已保存", {
+            fsPath: uri.fsPath,
+          });
+
+          // 监听用户在预览面板中的接受/拒绝动作
+          if (typeof (result as any).onAccept === "function") {
+            (result as any).onAccept((eUri: any, eEdit: any) => {
+              console.log("[hbuilderx] PreviewEditSession.onAccept 触发", {
+                filepath: eUri?.fsPath ?? eUri,
+                hasEdit: !!eEdit,
+              });
+              this.options.onUserAccept?.(eUri, eEdit);
+            });
+          }
+          if (typeof (result as any).onReject === "function") {
+            (result as any).onReject((eUri: any, eEdit: any) => {
+              console.log("[hbuilderx] PreviewEditSession.onReject 触发", {
+                filepath: eUri?.fsPath ?? eUri,
+                hasEdit: !!eEdit,
+              });
+              this.options.onUserReject?.(eUri, eEdit);
+            });
+          }
+        }
+
         // 检查是否有返回值或错误
         if (result === false || result === null) {
         }
@@ -247,7 +282,37 @@ export class PreviewEditManager {
       const textEdit = new hx.TextEdit(fullRange, newContent);
       workspaceEdit.set(uri, [textEdit]);
 
-      await hx.workspace.previewEdit(workspaceEdit);
+      const result = await hx.workspace.previewEdit(workspaceEdit);
+
+      if (
+        result &&
+        typeof (result as any).accept === "function" &&
+        typeof (result as any).reject === "function"
+      ) {
+        setPreviewSession(uri.fsPath, result);
+        console.log("[hbuilderx] 捕获 PreviewEditSession 并已保存", {
+          fsPath: uri.fsPath,
+        });
+
+        if (typeof (result as any).onAccept === "function") {
+          (result as any).onAccept((eUri: any, eEdit: any) => {
+            console.log("[hbuilderx] PreviewEditSession.onAccept 触发", {
+              filepath: eUri?.fsPath ?? eUri,
+              hasEdit: !!eEdit,
+            });
+            this.options.onUserAccept?.(eUri, eEdit);
+          });
+        }
+        if (typeof (result as any).onReject === "function") {
+          (result as any).onReject((eUri: any, eEdit: any) => {
+            console.log("[hbuilderx] PreviewEditSession.onReject 触发", {
+              filepath: eUri?.fsPath ?? eUri,
+              hasEdit: !!eEdit,
+            });
+            this.options.onUserReject?.(eUri, eEdit);
+          });
+        }
+      }
 
       this.options.onStatusUpdate?.("done", 1, newContent);
       console.log("[hbuilderx] PreviewEditManager.replaceFileContent 完成");

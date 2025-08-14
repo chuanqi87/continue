@@ -31,6 +31,11 @@ import FileContextProvider from "../../context/providers/FileContextProvider";
 import { contextProviderClassFromName } from "../../context/providers/index";
 import { ControlPlaneClient } from "../../control-plane/client";
 import TransformersJsEmbeddingsProvider from "../../llm/llms/TransformersJsEmbeddingsProvider";
+import {
+  UNIAPP_DEFAULT_AGENT_SYSTEM_MESSAGE,
+  UNIAPP_DEFAULT_PLAN_SYSTEM_MESSAGE,
+  UNIAPP_DEFAULT_SYSTEM_MESSAGE,
+} from "../../llm/uniappDefaultSystemMessage";
 import { getAllPromptFiles } from "../../promptFiles/getPromptFiles";
 import { GlobalContext } from "../../util/GlobalContext";
 import { modifyAnyConfigWithSharedConfig } from "../sharedConfig";
@@ -508,6 +513,39 @@ export async function loadContinueConfigFromYaml(options: {
   );
   if (withShared.allowAnonymousTelemetry === undefined) {
     withShared.allowAnonymousTelemetry = true;
+  }
+
+  try {
+    const yamlName = (configYamlResult.config as any)?.name;
+    if (
+      typeof yamlName === "string" &&
+      yamlName.trim().toLowerCase() === "harmony"
+    ) {
+      console.log(
+        "[hbuilderx] loadContinueConfigFromYaml: Detected harmony YAML name, applying harmony system messages",
+      );
+      withShared.modelsByRole.chat.forEach((m: any) => {
+        m.baseChatSystemMessage =
+          UNIAPP_DEFAULT_SYSTEM_MESSAGE as unknown as string;
+        m.baseAgentSystemMessage =
+          UNIAPP_DEFAULT_AGENT_SYSTEM_MESSAGE as unknown as string;
+        m.basePlanSystemMessage =
+          UNIAPP_DEFAULT_PLAN_SYSTEM_MESSAGE as unknown as string;
+      });
+      if (withShared.selectedModelByRole.chat) {
+        (withShared.selectedModelByRole.chat as any).baseChatSystemMessage =
+          UNIAPP_DEFAULT_SYSTEM_MESSAGE as unknown as string;
+        (withShared.selectedModelByRole.chat as any).baseAgentSystemMessage =
+          UNIAPP_DEFAULT_AGENT_SYSTEM_MESSAGE as unknown as string;
+        (withShared.selectedModelByRole.chat as any).basePlanSystemMessage =
+          UNIAPP_DEFAULT_PLAN_SYSTEM_MESSAGE as unknown as string;
+      }
+    }
+  } catch (e) {
+    console.warn(
+      "[hbuilderx] loadContinueConfigFromYaml: Failed to apply uni-app system messages",
+      e,
+    );
   }
 
   return {

@@ -1,4 +1,6 @@
 import { ConfigHandler } from "core/config/ConfigHandler";
+import { EDIT_MODE_STREAM_ID } from "core/edit/constants";
+import { streamDiffLines } from "core/edit/streamDiffLines";
 import {
   FromCoreProtocol,
   FromWebviewProtocol,
@@ -13,6 +15,7 @@ import {
   WEBVIEW_TO_CORE_PASS_THROUGH,
 } from "core/protocol/passThrough";
 import { ApplyManager } from "../apply";
+import { PreviewEditManager } from "../diff/PreviewEditManager";
 import { HbuilderXIde } from "../HBuilderXIde";
 import { getControlPlaneSessionInfo } from "../stubs/WorkOsAuthProvider";
 import { handleLLMError } from "../util/errorHandling";
@@ -197,51 +200,138 @@ export class HbuilderXMessenger {
       //   verticalDiffManager,
       // });
     });
+    // 实现与 VSCode 一致的 edit/sendPrompt：基于 range 计算 diff，流式更新 GUI
     this.onWebview("edit/sendPrompt", async (msg) => {
-      console.warn("[hbuilderx] edit/sendPrompt 消息未实现");
-      throw new Error("edit/sendPrompt 消息未实现");
-      // const prompt = msg.data.prompt;
-      // const { start, end } = msg.data.range.range;
-      // const verticalDiffManager = await verticalDiffManagerPromise;
+      try {
+        const prompt = msg.data.prompt as string;
+        const { start, end } = msg.data.range.range as {
+          start: { line: number; character: number };
+          end: { line: number; character: number };
+        };
+        const filepath: string = msg.data.range.filepath;
 
-      // const configHandler = await configHandlerPromise;
-      // const { config } = await configHandler.loadConfig();
+        // 确保文件已打开
+        await this.ide.openFile(filepath);
 
-      // if (!config) {
-      //   throw new Error("Edit: Failed to load config");
-      // }
+        const editor = await hx.window.getActiveTextEditor();
+        if (!editor) {
+          throw new Error("No active editor to run edit on");
+        }
 
-      // const model =
-      //   config?.selectedModelByRole.edit ?? config?.selectedModelByRole.chat;
+        // 读取全文，基于 range 计算 prefix / highlighted / suffix
+        const fullText: string = editor.document.getText();
+        const lines = fullText.split("\n");
 
-      // if (!model) {
-      //   throw new Error("No Edit or Chat model selected");
-      // }
+        function sliceUpTo(lineIdx: number, charIdx: number): string {
+          if (lineIdx <= 0) {
+            return lines[0]?.slice(0, charIdx) ?? "";
+          }
+          const before = lines.slice(0, lineIdx).join("\n");
+          const head = before.length > 0 ? before + "\n" : "";
+          return head + (lines[lineIdx] ?? "").slice(0, charIdx);
+        }
 
-      // const fileAfterEdit = await verticalDiffManager.streamEdit({
-      //   input: stripImages(prompt),
-      //   llm: model,
-      //   streamId: EDIT_MODE_STREAM_ID,
-      //   range: new vscode.Range(
-      //     new vscode.Position(start.line, start.character),
-      //     new vscode.Position(end.line, end.character),
-      //   ),
-      //   rulesToInclude: config.rules,
-      // });
+        function sliceRange(
+          sLine: number,
+          sChar: number,
+          eLine: number,
+          eChar: number,
+        ): string {
+          if (sLine === eLine) {
+            return (lines[sLine] ?? "").slice(sChar, eChar);
+          }
+          const first = (lines[sLine] ?? "").slice(sChar);
+          const middle = lines.slice(sLine + 1, eLine).join("\n");
+          const last = (lines[eLine] ?? "").slice(0, eChar);
+          return [first, middle, last].filter((s) => s.length > 0).join("\n");
+        }
 
-      // // Log dev data
-      // await DataLogger.getInstance().logDevData({
-      //   name: "editInteraction",
-      //   data: {
-      //     prompt: stripImages(prompt),
-      //     completion: fileAfterEdit ?? "",
-      //     modelProvider: model.underlyingProviderName,
-      //     modelTitle: model.title ?? "",
-      //     filepath: msg.data.range.filepath,
-      //   },
-      // });
+        const prefix = sliceUpTo(start.line, start.character);
+        const highlighted = sliceRange(
+          start.line,
+          start.character,
+          end.line,
+          end.character,
+        );
+        const suffix = fullText.slice(prefix.length + highlighted.length);
 
-      // return fileAfterEdit;
+        // 读取配置，获取模型
+        const configHandler = await this.configHandlerPromise;
+        const loaded = await configHandler.loadConfig();
+        const cfg = loaded.config;
+        if (!cfg) {
+          throw new Error("Edit: Failed to load config");
+        }
+        const llmCandidate =
+          cfg.selectedModelByRole.edit ?? cfg.selectedModelByRole.chat;
+        if (!llmCandidate) {
+          throw new Error("No Edit or Chat model selected");
+        }
+        const llm = llmCandidate;
+
+        const streamId = EDIT_MODE_STREAM_ID;
+
+        // 准备 diff 流，并记录产出以返回 fileAfterEdit
+        const streamedLines: string[] = [];
+        async function* recordedStream() {
+          const abortController = new AbortController();
+          const gen = streamDiffLines({
+            highlighted,
+            prefix,
+            suffix,
+            llm,
+            rulesToInclude: cfg!.rules,
+            input: prompt,
+            language: undefined,
+            overridePrompt: undefined,
+            abortController,
+          });
+          for await (const line of gen) {
+            if (line.type === "new" || line.type === "same") {
+              streamedLines.push(line.line);
+            }
+            yield line;
+          }
+        }
+
+        // 使用 PreviewEditManager 进行预览应用，利用其 onStatusUpdate 推送状态
+        const previewEditManager = new PreviewEditManager({
+          onStatusUpdate: async (status, numDiffs, fileContent) => {
+            await this.webviewProtocol.request("updateApplyState", {
+              streamId,
+              status: status || "streaming",
+              numDiffs: numDiffs || 0,
+              fileContent,
+              filepath,
+            });
+          },
+          onUserAccept: async (eUri, eEdit) => {
+            // 用户在预览界面点击了接受：如果是单个 edit，可选择同步 numDiffs 或 fileContent
+            await this.webviewProtocol.request("updateApplyState", {
+              streamId,
+              status: "done",
+              filepath: (eUri?.fsPath ?? eUri) as string,
+            });
+          },
+          onUserReject: async (eUri, eEdit) => {
+            // 用户在预览界面点击了拒绝：对于单个 edit 或全部拒绝，通知 GUI 关闭
+            await this.webviewProtocol.request("updateApplyState", {
+              streamId,
+              status: "closed",
+              filepath: (eUri?.fsPath ?? eUri) as string,
+              numDiffs: 0,
+            });
+          },
+        });
+
+        await previewEditManager.applyStreamDiffs(filepath, recordedStream());
+
+        const fileAfterEdit = `${prefix}${streamedLines.join("\n")}${suffix}`;
+        return fileAfterEdit;
+      } catch (e) {
+        await handleLLMError(e);
+        throw e;
+      }
     });
 
     this.onWebview("edit/clearDecorations", async (msg) => {

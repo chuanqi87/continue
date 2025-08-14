@@ -143,7 +143,7 @@ async function package(target, os, arch, exe) {
   await downloadRipgrepBinary(target);
 
   // copy node_modules to out/node_modules
-  await copyNodeModules();
+  await copyNodeModules(target);
 
   // Copy over any worker files
   fs.cpSync(
@@ -195,14 +195,15 @@ async function package(target, os, arch, exe) {
     "out/tree-sitter.wasm",
     // Worker required by jsdom
     "out/xhr-sync-worker.js",
-    // SQLite3 Node native module
+    // SQLite3 Node native module (两个位置都需要验证)
     "out/build/Release/node_sqlite3.node",
+    "out/Release/node_sqlite3.node",
 
     // out/node_modules (to be accessed by extension.js)
     `out/node_modules/@vscode/ripgrep/bin/rg${exe}`,
     `out/node_modules/@esbuild/${
       target === "win32-arm64"
-        ? "esbuild.exe"
+        ? "win32-arm64/esbuild.exe"
         : target === "win32-x64"
           ? "win32-x64/esbuild.exe"
           : `${target}/bin/esbuild`

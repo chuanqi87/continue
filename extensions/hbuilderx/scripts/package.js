@@ -36,12 +36,18 @@ const includes = [
   "README.md",
 ];
 
-// Ensure out/extension.js exists; if not, run esbuild
+// Ensure out/extension.js exists; if not, run esbuild (but NOT prepackage)
 try {
   const outJs = path.join(cwd, "out", "extension.js");
   if (!fs.existsSync(outJs)) {
-    console.log("[hbuilderx] extension.js not found; building with esbuild...");
+    console.log(
+      `[hbuilderx] extension.js not found; building with esbuild for ${target || "current platform"}...`,
+    );
     execSync("node scripts/esbuild.js --sourcemap", { cwd, stdio: "inherit" });
+  } else {
+    console.log(
+      `[hbuilderx] Using existing extension.js for ${target || "current platform"}`,
+    );
   }
 } catch (e) {
   console.error("[hbuilderx] esbuild failed:", e.message || e);

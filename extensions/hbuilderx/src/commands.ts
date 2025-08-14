@@ -24,7 +24,12 @@ const hx = require("hbuilderx");
 import { convertJsonToYamlConfig } from "../../../packages/config-yaml/dist";
 
 import { ContinueGUIWebviewViewProvider } from "./ContinueGUIWebviewViewProvider";
-import { HbuilderXIde } from "./HbuilderXIde";
+import {
+  clearPreviewSession,
+  getPreviewSession,
+  toUri,
+} from "./diff/PreviewEditSessionStore";
+import { HbuilderXIde } from "./HBuilderXIde";
 // import { QuickEditShowParams } from "./quickEdit/QuickEditQuickPick";
 import {
   addCodeToContextFromRange,
@@ -111,6 +116,26 @@ async function processDiff(
   }
 
   await ide.openFile(newOrCurrentUri);
+
+  // 如果存在 PreviewEditSession，则调用会话的 accept/reject
+  try {
+    const session = getPreviewSession(newOrCurrentUri);
+    if (session) {
+      const targetUri = toUri(newOrCurrentUri);
+      if (action === "accept") {
+        console.log("[hbuilderx] 调用 PreviewEditSession.accept");
+        await session.accept(targetUri);
+      } else {
+        console.log("[hbuilderx] 调用 PreviewEditSession.reject");
+        await session.reject(targetUri);
+      }
+      clearPreviewSession(newOrCurrentUri);
+    } else {
+      console.log("[hbuilderx] 未找到 PreviewEditSession，会退为已有处理流程");
+    }
+  } catch (e) {
+    console.error("[hbuilderx] 调用 PreviewEditSession 失败", e);
+  }
 
   // Clear vertical diffs depending on action
   // verticalDiffManager.clearForfileUri(newOrCurrentUri, action === "accept");

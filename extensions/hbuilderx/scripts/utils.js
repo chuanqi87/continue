@@ -306,7 +306,7 @@ async function copyTreeSitterTagQryFiles() {
   }
 }
 
-async function copyNodeModules() {
+async function copyNodeModules(target) {
   // Copy node_modules for pre-built binaries
   process.chdir(path.join(continueDir, "extensions", "hbuilderx"));
 
@@ -348,6 +348,77 @@ async function copyNodeModules() {
 
   // delete esbuild/bin because platform-specific @esbuild is downloaded
   fs.rmSync(`out/node_modules/esbuild/bin`, { recursive: true, force: true });
+
+  // 清理错误平台的@esbuild文件，只保留目标平台
+  const esbuildDir = `out/node_modules/@esbuild`;
+  if (fs.existsSync(esbuildDir)) {
+    const platformDirs = fs.readdirSync(esbuildDir);
+    const targetPlatform =
+      target === "win32-arm64"
+        ? "win32-arm64"
+        : target === "win32-x64"
+          ? "win32-x64"
+          : target === "linux-arm64"
+            ? "linux-arm64"
+            : target === "linux-x64"
+              ? "linux-x64"
+              : target === "darwin-arm64"
+                ? "darwin-arm64"
+                : target === "darwin-x64"
+                  ? "darwin-x64"
+                  : null;
+
+    if (targetPlatform) {
+      for (const dir of platformDirs) {
+        if (
+          dir !== targetPlatform &&
+          fs.statSync(path.join(esbuildDir, dir)).isDirectory()
+        ) {
+          console.log(`[hbuilderx] 删除错误平台的esbuild: ${dir}`);
+          fs.rmSync(path.join(esbuildDir, dir), {
+            recursive: true,
+            force: true,
+          });
+        }
+      }
+    }
+  }
+
+  // 清理错误平台的LanceDB文件
+  const lancedbDir = `out/node_modules/@lancedb`;
+  if (fs.existsSync(lancedbDir)) {
+    const vectordbFiles = fs
+      .readdirSync(lancedbDir)
+      .filter((f) => f.startsWith("vectordb-"));
+    const targetFile =
+      target === "win32-x64"
+        ? "vectordb-win32-x64-msvc"
+        : target === "win32-arm64"
+          ? "vectordb-win32-x64-msvc" // fallback to x64
+          : target === "linux-x64"
+            ? "vectordb-linux-x64-gnu"
+            : target === "linux-arm64"
+              ? "vectordb-linux-aarch64-gnu"
+              : target === "darwin-x64"
+                ? "vectordb-darwin-x64"
+                : target === "darwin-arm64"
+                  ? "vectordb-darwin-arm64"
+                  : null;
+
+    if (targetFile) {
+      for (const file of vectordbFiles) {
+        if (file !== targetFile) {
+          console.log(`[hbuilderx] 删除错误平台的lancedb: ${file}`);
+          fs.rmSync(path.join(lancedbDir, file), {
+            recursive: true,
+            force: true,
+          });
+        }
+      }
+    }
+  }
+
+  // 清理错误平台的ONNX Runtime文件（已有逻辑会处理）
 
   console.log(`[hbuilderx] Copied ${NODE_MODULES_TO_COPY.join(", ")}`);
 }
@@ -405,53 +476,234 @@ async function downloadEsbuildBinary(target) {
 }
 
 async function downloadSqliteBinary(target) {
-  console.log("[hbuilderx] Downloading pre-built sqlite3 binary");
+  console.log(`[hbuilderx] Preparing sqlite3 binary for ${target}`);
+
+  // 验证目标平台
+  if (!target) {
+    throw new Error("[hbuilderx] 目标平台未指定");
+  }
+
+  const supportedTargets = [
+    "darwin-arm64",
+    "linux-arm64",
+    "win32-arm64",
+    "linux-x64",
+    "darwin-x64",
+    "win32-x64",
+  ];
+  if (!supportedTargets.includes(target)) {
+    throw new Error(
+      `[hbuilderx] 不支持的目标平台: ${target}. 支持的平台: ${supportedTargets.join(", ")}`,
+    );
+  }
+
+  // win32-arm64使用win32-x64的sqlite3作为fallback（官方没有arm64版本）
+  const actualTarget = target === "win32-arm64" ? "win32-x64" : target;
+
   rimrafSync("../../core/node_modules/sqlite3/build");
-  const downloadUrl = {
-    "darwin-arm64":
-      "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-darwin-arm64.tar.gz",
-    "linux-arm64":
-      "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-linux-arm64.tar.gz",
-    "win32-arm64":
-      "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-win32-arm64.tar.gz",
-    "linux-x64":
-      "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-linux-x64.tar.gz",
-    "darwin-x64":
-      "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-darwin-x64.tar.gz",
-    "win32-x64":
-      "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-win32-x64.tar.gz",
-  }[target];
-  execCmdSync(
-    `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ../../core/node_modules/sqlite3/build.tar.gz ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ../../core/node_modules/sqlite3/build.tar.gz ${downloadUrl}`,
+
+  // 1) 优先使用本地缓存的 tar.gz 包
+  const localBaseDir =
+    process.env.CONTINUE_SQLITE3_LOCAL_DIR || "/Users/legend/Downloads/sqlite3";
+  const localFileNameMap = {
+    "darwin-arm64": "sqlite3-v5.1.7-napi-v6-darwin-arm64.tar.gz",
+    "linux-arm64": "sqlite3-v5.1.7-napi-v3-linux-arm64.tar.gz",
+    "win32-arm64": "sqlite3-v5.1.7-napi-v6-win32-arm64.tar.gz",
+    "linux-x64": "sqlite3-v5.1.7-napi-v3-linux-x64.tar.gz",
+    "darwin-x64": "sqlite3-v5.1.7-napi-v6-darwin-x64.tar.gz",
+    "win32-x64": "sqlite3-v5.1.7-napi-v3-win32-x64.tar.gz",
+  };
+  const localCandidate = path.join(
+    localBaseDir,
+    localFileNameMap[actualTarget] || "",
   );
-  execCmdSync("cd ../../core/node_modules/sqlite3 && tar -xvzf build.tar.gz");
-  fs.unlinkSync("../../core/node_modules/sqlite3/build.tar.gz");
+
+  if (target === "win32-arm64") {
+    console.log(
+      `[hbuilderx] 注意: win32-arm64使用win32-x64的sqlite3二进制（官方无arm64版本）`,
+    );
+  }
+
+  const destTarPath = "../../core/node_modules/sqlite3/build.tar.gz";
+
+  let usedLocal = false;
+  try {
+    if (fs.existsSync(localCandidate)) {
+      console.log(`[hbuilderx] Using local sqlite3 binary: ${localCandidate}`);
+      const stats = fs.statSync(localCandidate);
+      console.log(
+        `[hbuilderx] 本地文件大小: ${(stats.size / 1024 / 1024).toFixed(1)} MB`,
+      );
+      fs.copyFileSync(localCandidate, destTarPath);
+      usedLocal = true;
+    } else {
+      console.log(
+        "[hbuilderx] Local sqlite3 binary not found, will download from remote",
+      );
+    }
+  } catch (e) {
+    console.warn(
+      "[hbuilderx] Error while checking/copying local sqlite3 binary",
+      e,
+    );
+  }
+
+  // 2) 如果本地不存在则回退到下载
+  if (!usedLocal) {
+    console.log(
+      `[hbuilderx] Downloading pre-built sqlite3 binary for ${target}`,
+    );
+    const downloadUrl = {
+      "darwin-arm64":
+        "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-darwin-arm64.tar.gz",
+      "linux-arm64":
+        "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-linux-arm64.tar.gz",
+      "win32-arm64":
+        "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-win32-arm64.tar.gz",
+      "linux-x64":
+        "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-linux-x64.tar.gz",
+      "darwin-x64":
+        "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-darwin-x64.tar.gz",
+      "win32-x64":
+        "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-win32-x64.tar.gz",
+    }[actualTarget];
+
+    if (!downloadUrl) {
+      throw new Error(
+        `[hbuilderx] 未找到目标平台 ${actualTarget} 的SQLite3下载URL`,
+      );
+    }
+
+    try {
+      execCmdSync(
+        `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${destTarPath} ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${destTarPath} ${downloadUrl}`,
+      );
+
+      // 验证下载的文件
+      if (!fs.existsSync(destTarPath)) {
+        throw new Error(`[hbuilderx] SQLite3下载失败: ${destTarPath} 不存在`);
+      }
+
+      const downloadStats = fs.statSync(destTarPath);
+      console.log(
+        `[hbuilderx] 下载完成，文件大小: ${(downloadStats.size / 1024 / 1024).toFixed(1)} MB`,
+      );
+    } catch (downloadError) {
+      throw new Error(`[hbuilderx] SQLite3下载失败: ${downloadError.message}`);
+    }
+  }
+
+  // 3) 解压并验证
+  try {
+    execCmdSync("cd ../../core/node_modules/sqlite3 && tar -xvzf build.tar.gz");
+
+    // 验证解压结果
+    const extractedNodePath =
+      "../../core/node_modules/sqlite3/build/Release/node_sqlite3.node";
+    if (!fs.existsSync(extractedNodePath)) {
+      throw new Error(
+        `[hbuilderx] SQLite3解压后验证失败: ${extractedNodePath} 不存在`,
+      );
+    }
+
+    console.log(`[hbuilderx] ✅ SQLite3 (${target}) 准备完成`);
+    fs.unlinkSync(destTarPath);
+  } catch (extractError) {
+    throw new Error(`[hbuilderx] SQLite3解压失败: ${extractError.message}`);
+  }
 }
 
 async function copySqliteBinary() {
   process.chdir(path.join(continueDir, "extensions", "hbuilderx"));
   console.log("[hbuilderx] Copying sqlite node binding from core");
+
+  const sourcePath = path.join(
+    __dirname,
+    "../../../core/node_modules/sqlite3/build",
+  );
+  const targetPath1 = path.join(__dirname, "../out/build");
+  const targetPath2 = path.join(__dirname, "../out"); // 额外的拷贝位置，参考VSCode实现
+
+  // 验证源路径存在
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(`[hbuilderx] SQLite3 源路径不存在: ${sourcePath}`);
+  }
+
+  // 检查关键的sqlite3文件
+  const sqlite3NodePath = path.join(sourcePath, "Release/node_sqlite3.node");
+  if (!fs.existsSync(sqlite3NodePath)) {
+    throw new Error(`[hbuilderx] 关键文件缺失: ${sqlite3NodePath}`);
+  }
+
+  const stats = fs.statSync(sqlite3NodePath);
+  console.log(
+    `[hbuilderx] SQLite3 二进制大小: ${(stats.size / 1024).toFixed(1)} KB`,
+  );
+
+  // 第一次拷贝：复制到 out/build/ 目录（用于验证文件）
   await new Promise((resolve, reject) => {
-    ncp(
-      path.join(__dirname, "../../../core/node_modules/sqlite3/build"),
-      path.join(__dirname, "../out/build"),
-      { dereference: true },
-      (error) => {
-        if (error) {
-          console.warn("[hbuilderx] Error copying sqlite3 files", error);
-          reject(error);
-        } else {
+    ncp(sourcePath, targetPath1, { dereference: true }, (error) => {
+      if (error) {
+        console.warn(
+          "[hbuilderx] Error copying sqlite3 files to out/build",
+          error,
+        );
+        reject(error);
+      } else {
+        // 验证拷贝结果
+        const copiedSqlite3 = path.join(
+          targetPath1,
+          "Release/node_sqlite3.node",
+        );
+        if (fs.existsSync(copiedSqlite3)) {
+          console.log("[hbuilderx] ✅ SQLite3 拷贝到 out/build 成功");
           resolve();
+        } else {
+          reject(new Error("[hbuilderx] SQLite3 拷贝到 out/build 验证失败"));
         }
-      },
-    );
+      }
+    });
+  });
+
+  // 第二次拷贝：复制到 out/ 目录（用于HBuilderX运行时解析，参考VSCode实现）
+  await new Promise((resolve, reject) => {
+    ncp(sourcePath, targetPath2, { dereference: true }, (error) => {
+      if (error) {
+        console.warn("[hbuilderx] Error copying sqlite3 files to out/", error);
+        reject(error);
+      } else {
+        // 验证拷贝结果
+        const copiedSqlite3 = path.join(
+          targetPath2,
+          "Release/node_sqlite3.node",
+        );
+        if (fs.existsSync(copiedSqlite3)) {
+          console.log("[hbuilderx] ✅ SQLite3 拷贝到 out/ 成功");
+          resolve();
+        } else {
+          reject(new Error("[hbuilderx] SQLite3 拷贝到 out/ 验证失败"));
+        }
+      }
+    });
   });
 }
 
 async function downloadRipgrepBinary(target) {
-  console.log("[hbuilderx] Downloading pre-built ripgrep binary");
+  console.log("[hbuilderx] Preparing ripgrep binary");
   rimrafSync("node_modules/@vscode/ripgrep/bin");
   fs.mkdirSync("node_modules/@vscode/ripgrep/bin", { recursive: true });
+
+  const localBaseDir =
+    process.env.CONTINUE_RIPGREP_LOCAL_DIR || "/Users/legend/Downloads/ripgrep";
+  const localFileNameMap = {
+    "darwin-arm64": "ripgrep-v13.0.0-10-aarch64-apple-darwin.tar.gz",
+    "linux-arm64": "ripgrep-v13.0.0-10-aarch64-unknown-linux-gnu.tar.gz",
+    "win32-arm64": "ripgrep-v13.0.0-10-aarch64-pc-windows-msvc.zip",
+    "linux-x64": "ripgrep-v13.0.0-10-x86_64-unknown-linux-musl.tar.gz",
+    "darwin-x64": "ripgrep-v13.0.0-10-x86_64-apple-darwin.tar.gz",
+    "win32-x64": "ripgrep-v13.0.0-10-x86_64-pc-windows-msvc.zip",
+  };
+
   const downloadUrl = {
     "darwin-arm64":
       "https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-10/ripgrep-v13.0.0-10-aarch64-apple-darwin.tar.gz",
@@ -467,16 +719,50 @@ async function downloadRipgrepBinary(target) {
       "https://github.com/microsoft/ripgrep-prebuilt/releases/download/v13.0.0-10/ripgrep-v13.0.0-10-x86_64-pc-windows-msvc.zip",
   }[target];
 
-  if (target.startsWith("win")) {
-    execCmdSync(
-      `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o node_modules/@vscode/ripgrep/bin/build.zip ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o node_modules/@vscode/ripgrep/bin/build.zip ${downloadUrl}`,
+  const localCandidate = path.join(
+    localBaseDir,
+    localFileNameMap[target] || "",
+  );
+  const isWindows = target.startsWith("win");
+  const destPath = isWindows
+    ? "node_modules/@vscode/ripgrep/bin/build.zip"
+    : "node_modules/@vscode/ripgrep/bin/build.tar.gz";
+
+  let usedLocal = false;
+  try {
+    if (fs.existsSync(localCandidate)) {
+      console.log(`[hbuilderx] Using local ripgrep binary: ${localCandidate}`);
+      fs.copyFileSync(localCandidate, destPath);
+      usedLocal = true;
+    } else {
+      console.log(
+        "[hbuilderx] Local ripgrep binary not found, will download from remote",
+      );
+    }
+  } catch (e) {
+    console.warn(
+      "[hbuilderx] Error while checking/copying local ripgrep binary",
+      e,
     );
+  }
+
+  if (!usedLocal) {
+    console.log("[hbuilderx] Downloading pre-built ripgrep binary");
+    if (isWindows) {
+      execCmdSync(
+        `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${destPath} ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${destPath} ${downloadUrl}`,
+      );
+    } else {
+      execCmdSync(
+        `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${destPath} ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o ${destPath} ${downloadUrl}`,
+      );
+    }
+  }
+
+  if (isWindows) {
     execCmdSync("cd node_modules/@vscode/ripgrep/bin && unzip build.zip");
     fs.unlinkSync("node_modules/@vscode/ripgrep/bin/build.zip");
   } else {
-    execCmdSync(
-      `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o node_modules/@vscode/ripgrep/bin/build.tar.gz ${downloadUrl} || curl -L --http1.1 --fail --retry 5 --retry-all-errors --connect-timeout 30 -o node_modules/@vscode/ripgrep/bin/build.tar.gz ${downloadUrl}`,
-    );
     execCmdSync(
       "cd node_modules/@vscode/ripgrep/bin && tar -xvzf build.tar.gz",
     );
