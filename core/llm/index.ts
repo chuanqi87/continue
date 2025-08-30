@@ -187,6 +187,8 @@ export abstract class BaseLLM implements ILLM {
   maxEmbeddingChunkSize: number;
   maxEmbeddingBatchSize: number;
 
+  harmonyAgent?: boolean;
+
   //URI to local block defining this LLM
   sourceFile?: string;
 
@@ -294,6 +296,7 @@ export abstract class BaseLLM implements ILLM {
 
     this.autocompleteOptions = options.autocompleteOptions;
     this.sourceFile = options.sourceFile;
+    this.harmonyAgent = options.harmonyAgent;
   }
 
   getConfigurationStatus() {

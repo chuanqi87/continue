@@ -172,3 +172,4 @@ extensions/.continue-debug/
 **/.continue/assistants/
 keys
 extensions/hbuilderx/gui
+gui/dist-hbuilderx/

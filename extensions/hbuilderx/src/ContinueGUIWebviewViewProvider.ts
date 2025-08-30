@@ -1,11 +1,11 @@
 const hx = require("hbuilderx");
 
+import type { FileEdit } from "core";
+import { ConfigHandler } from "core/config/ConfigHandler";
+import os from "os";
 import { getExtensionUri, getNonce, getUniqueId } from "./util/hbuilderx";
 import { getExtensionVersion } from "./util/util";
 import { HbuilderXWebviewProtocol } from "./webviewProtocol";
-
-import type { FileEdit } from "core";
-import { ConfigHandler } from "core/config/ConfigHandler";
 
 export class ContinueGUIWebviewViewProvider {
   public static readonly viewType = "continue.continueGUIView";
@@ -144,7 +144,7 @@ export class ContinueGUIWebviewViewProvider {
     console.log("[hbuilderx] 生成最终HTML内容");
 
     // 返回完整的HTML内容
-    this._webview.html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
     <html lang="en">
       <head>
         <meta charset="UTF-8">
@@ -202,6 +202,67 @@ export class ContinueGUIWebviewViewProvider {
         }
       </body>
     </html>`;
+
+    // 返回完整的HTML内容
+    const winHtml = `<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="${styleMainUri}" rel="stylesheet">
+        <style>
+          * {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
+          }
+          
+          /* 针对中文字符的字体设置 */
+          :lang(zh), :lang(zh-CN), :lang(zh-TW) {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif !important;
+          }
+          
+          /* 覆盖可能的字体指定 */
+          body, div, span, p, h1, h2, h3, h4, h5, h6, input, textarea, button {
+            font-family: inherit !important;
+          }
+        </style>
+
+        <title>Continue</title>
+      </head>
+      <body lang="zh-CN">
+        <div id="root"></div>
+        <script nonce="${nonce}" src="${scriptUri}"></script>
+
+        <!-- 设置全局变量供前端使用 -->
+        <script>localStorage.setItem("ide", '"hbuilderx"')</script>
+        <script>localStorage.setItem("extensionVersion", '"${getExtensionVersion()}"')</script>
+        <script>window.windowId = "${this.windowId}"</script>
+        <script>window.vscMachineId = "${getUniqueId()}"</script>
+        <script>window.vscMediaUrl = "${vscMediaUrl}"</script>
+        <script>window.ide = "hbuilderx"</script>
+        <script>window.colorThemeName = "dark-plus"</script>
+                <script>window.workspacePaths = ${JSON.stringify(
+                  hx.workspace.workspaceFolders?.map((folder: any) =>
+                    folder.uri.toString(),
+                  ) || [],
+                )}</script>
+        <script>window.isFullScreen = ${isFullScreen}</script>
+
+        ${
+          edits
+            ? `<!-- 传递编辑信息到前端 -->
+               <script>window.edits = ${JSON.stringify(edits)}</script>`
+            : ""
+        }
+        ${
+          page
+            ? `<!-- 设置初始页面路径 -->
+               <script>window.location.pathname = "${page}"</script>`
+            : ""
+        }
+      </body>
+    </html>`;
+
+    this._webview.html = os.platform() === "win32" ? winHtml : html;
 
     return this._webview.html;
   }

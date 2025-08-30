@@ -633,43 +633,9 @@ class HbuilderXIde implements IDE {
       const candidates: string[] = [];
 
       if (extensionDir && typeof extensionDir === "string") {
-        // 部署状态：打包后在 out/node_modules 下
+        // 使用插件中的 ripgrep
         candidates.push(
-          path.join(
-            extensionDir,
-            "out",
-            "node_modules",
-            "@vscode",
-            "ripgrep",
-            "bin",
-            `rg${exe}`,
-          ),
-        );
-
-        // 调试状态：扩展目录/工作区 node_modules
-        candidates.push(
-          path.join(
-            extensionDir,
-            "node_modules",
-            "@vscode",
-            "ripgrep",
-            "bin",
-            `rg${exe}`,
-          ),
-        );
-
-        // 仓库结构：continue/extensions/vscode/node_modules
-        candidates.push(
-          path.join(
-            extensionDir,
-            "..",
-            "vscode",
-            "node_modules",
-            "@vscode",
-            "ripgrep",
-            "bin",
-            `rg${exe}`,
-          ),
+          path.join(extensionDir, "..", "ripgrep", "bin", `rg${exe}`),
         );
       }
 

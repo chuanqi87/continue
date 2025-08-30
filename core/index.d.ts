@@ -632,6 +632,8 @@ export interface LLMOptions {
 
   useLegacyCompletionsEndpoint?: boolean;
 
+  harmonyAgent?: boolean;
+
   // Embedding options
   embeddingId?: string;
   maxEmbeddingChunkSize?: number;
