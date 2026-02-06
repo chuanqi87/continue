@@ -71,6 +71,7 @@ const exe = os === "win32" ? ".exe" : "";
 const isWinTarget = target?.startsWith("win");
 const isLinuxTarget = target?.startsWith("linux");
 const isMacTarget = target?.startsWith("darwin");
+const isArmTarget = target?.endsWith("arm64");
 
 void (async () => {
   const startTime = Date.now();
@@ -433,11 +434,29 @@ void (async () => {
     console.log("[info] Downloading pre-built esbuild binary");
     rimrafSync("node_modules/@esbuild");
     fs.mkdirSync("node_modules/@esbuild", { recursive: true });
-    execCmdSync(
-      `curl -o node_modules/@esbuild/esbuild.zip https://continue-server-binaries.s3.us-west-1.amazonaws.com/${target}/esbuild.zip`,
-    );
-    execCmdSync(`cd node_modules/@esbuild && unzip esbuild.zip`);
-    fs.unlinkSync("node_modules/@esbuild/esbuild.zip");
+    let esbuildDownloaded = false;
+    try {
+      require("child_process").execSync(
+        `curl -L --fail --retry 3 --connect-timeout 30 -o node_modules/@esbuild/esbuild.zip https://continue-server-binaries.s3.us-west-1.amazonaws.com/${target}/esbuild.zip`,
+      );
+      require("child_process").execSync(
+        `cd node_modules/@esbuild && unzip esbuild.zip`,
+      );
+      fs.unlinkSync("node_modules/@esbuild/esbuild.zip");
+      esbuildDownloaded = true;
+    } catch (err) {
+      console.warn(
+        "[warn] Failed to download pre-built esbuild binary from S3, falling back to npm install",
+      );
+      rimrafSync("node_modules/@esbuild");
+    }
+    if (!esbuildDownloaded) {
+      console.log("[info] npm installing esbuild binary as fallback");
+      await installNodeModuleInTempDirAndCopyToCurrent(
+        "esbuild@0.17.19",
+        "@esbuild",
+      );
+    }
   } else {
     // Download esbuild from npm in tmp and copy over
     console.log("npm installing esbuild binary");
