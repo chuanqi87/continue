@@ -4,6 +4,9 @@ import { Telemetry } from "core/util/posthog";
 import { HbuilderXExtension } from "./extension/HbuilderXExtension";
 import { getExtensionVersion } from "./util/util";
 
+// 保存扩展实例引用，以便在 deactivate 时正确清理资源
+let extensionInstance: HbuilderXExtension | undefined;
+
 /**
  * 插件激活入口
  */
@@ -21,7 +24,7 @@ function activate(context: any) {
     // registerQuickFixProvider();
     // setupInlineTips(context);
 
-    const _ = new HbuilderXExtension(context);
+    extensionInstance = new HbuilderXExtension(context);
 
     // Load Continue configuration
     if (!context.workspaceState.get("hasBeenInstalled")) {
@@ -48,6 +51,16 @@ function activate(context: any) {
  */
 function deactivate() {
   console.log("[hbuilderx]Continue扩展正在停用...");
+
+  // 清理扩展实例资源（包括销毁 WebviewPanel，避免重启时重复注册）
+  if (extensionInstance) {
+    try {
+      extensionInstance.dispose();
+    } catch (error) {
+      console.error("[hbuilderx] deactivate清理扩展实例失败:", error);
+    }
+    extensionInstance = undefined;
+  }
 
   Telemetry.capture(
     "deactivate",

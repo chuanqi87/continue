@@ -44,10 +44,8 @@ export const getConfigDependentToolDefinitions = async (
   if (modelName && isRecommendedAgentModel(modelName)) {
     tools.push(toolDefinitions.multiEditTool);
   } else {
-    if (!isHBuilderX) {
-      tools.push(toolDefinitions.editFileTool);
-      tools.push(toolDefinitions.singleFindAndReplaceTool);
-    }
+    tools.push(toolDefinitions.editFileTool);
+    tools.push(toolDefinitions.singleFindAndReplaceTool);
   }
 
   // missing support for remote os calls: https://github.com/microsoft/vscode/issues/252269

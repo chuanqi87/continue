@@ -26,6 +26,8 @@ import type {
   ResponseTextDeltaEvent,
 } from "openai/resources/responses/responses.mjs";
 
+import { v4 as uuidv4 } from "uuid";
+
 import {
   AssistantChatMessage,
   ChatMessage,
@@ -107,7 +109,8 @@ export function toChatMessage(
     return {
       role: "tool",
       content: message.content,
-      tool_call_id: message.toolCallId,
+      // Ensure tool_call_id is never empty (some models like MiniMax return "")
+      tool_call_id: message.toolCallId || `tc_${uuidv4()}`,
     };
   }
   if (message.role === "system") {
@@ -142,14 +145,27 @@ export function toChatMessage(
 
     // Add tool calls if present
     if (message.toolCalls) {
-      msg.tool_calls = message.toolCalls.map((toolCall) => ({
-        id: toolCall.id!,
-        type: toolCall.type!,
-        function: {
-          name: toolCall.function?.name!,
-          arguments: toolCall.function?.arguments || "{}",
-        },
-      }));
+      msg.tool_calls = message.toolCalls.map((toolCall) => {
+        // Ensure arguments is valid JSON before sending to API
+        let args = toolCall.function?.arguments || "{}";
+        if (typeof args === "string") {
+          try {
+            JSON.parse(args);
+          } catch {
+            // Malformed JSON (e.g. MiniMax may omit opening brace)
+            args = "{}";
+          }
+        }
+        return {
+          // Ensure id is never empty (some models like MiniMax return "")
+          id: toolCall.id || `tc_${uuidv4()}`,
+          type: toolCall.type || ("function" as const),
+          function: {
+            name: toolCall.function?.name || "unknown",
+            arguments: args,
+          },
+        };
+      });
     }
 
     // Preserving reasoning blocks
@@ -804,11 +820,18 @@ function emitFunctionCallsFromToolCalls(
     const call_id = tc?.id as string | undefined;
 
     if (name && call_id) {
+      // Ensure arguments is valid JSON before sending to API
+      let sanitizedArgs = typeof args === "string" ? args : "{}";
+      try {
+        JSON.parse(sanitizedArgs);
+      } catch {
+        sanitizedArgs = "{}";
+      }
       const functionCallItem: ResponseFunctionToolCall = {
         id: fcId,
         type: "function_call",
         name,
-        arguments: typeof args === "string" ? args : "{}",
+        arguments: sanitizedArgs,
         call_id,
       };
       input.push(functionCallItem);

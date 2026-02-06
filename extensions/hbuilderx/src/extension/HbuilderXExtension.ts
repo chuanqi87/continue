@@ -25,6 +25,7 @@ export class HbuilderXExtension {
   private editDecorationManager: EditDecorationManager;
   private workOsAuthProvider: WorkOsAuthProvider;
   private uriHandler = new UriEventHandler();
+  private webviewPanel: any;
 
   constructor(extensionContext: any) {
     console.log("[hbuilderx] HbuilderXExtension构造函数开始");
@@ -62,13 +63,13 @@ export class HbuilderXExtension {
     });
 
     console.log("[hbuilderx] 创建webviewPanel");
-    let webviewPanel = hx.window.createWebView("continue.continueGUIView", {
+    this.webviewPanel = hx.window.createWebView("continue.continueGUIView", {
       enableScripts: true,
     });
 
     console.log("[hbuilderx] 初始化ContinueGUIWebviewViewProvider");
     this.sidebar = new ContinueGUIWebviewViewProvider(
-      webviewPanel,
+      this.webviewPanel,
       configHandlerPromise,
       this.windowId,
       this.extensionContext,
@@ -326,6 +327,19 @@ export class HbuilderXExtension {
   dispose() {
     console.log("[hbuilderx] 开始清理HbuilderXExtension");
     try {
+      // 销毁WebviewPanel，释放 viewType 注册，避免重启时重复注册
+      if (this.webviewPanel) {
+        console.log("[hbuilderx] 销毁webviewPanel");
+        try {
+          if (typeof this.webviewPanel.dispose === "function") {
+            this.webviewPanel.dispose();
+          }
+        } catch (e) {
+          console.error("[hbuilderx] 销毁webviewPanel失败:", e);
+        }
+        this.webviewPanel = undefined;
+      }
+
       this.workOsAuthProvider.dispose();
       // EditDecorationManager没有dispose方法
       console.log("[hbuilderx] HbuilderXExtension清理完成");

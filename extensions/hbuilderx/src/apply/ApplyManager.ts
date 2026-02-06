@@ -4,7 +4,6 @@ import { applyCodeBlock } from "core/edit/lazy/applyCodeBlock";
 import { getUriPathBasename } from "core/util/uri";
 const hx = require("vscode");
 
-import { PreviewEditManager } from "../diff/PreviewEditManager";
 import { HbuilderXIde } from "../HBuilderXIde";
 import { HbuilderXWebviewProtocol } from "../webviewProtocol";
 
@@ -16,8 +15,9 @@ export interface ApplyToFileOptions {
 }
 
 /**
- * 使用HBuilderX原生previewEdit接口的应用管理器
- * 集成了tree-sitter校验、diff格式检测和LLM智能对比等完整逻辑
+ * HBuilderX 应用管理器
+ * 由于 HBuilderX 不支持 diff 展示，采用直接写入文件的方式（跳过 previewEdit）
+ * 集成了 tree-sitter 校验、diff 格式检测和 LLM 智能对比等完整逻辑
  */
 export class ApplyManager {
   constructor(
@@ -71,10 +71,15 @@ export class ApplyManager {
 
       if (hasExistingDocument) {
         console.log("[hbuilderx] 处理现有文档");
+        const filePath =
+          filepath ||
+          editor.document.uri.fsPath ||
+          editor.document.uri.toString();
         await this.handleExistingDocument(
           editor,
           currentContent,
           text,
+          filePath,
           streamId,
           toolCallId,
         );
@@ -138,15 +143,22 @@ export class ApplyManager {
     }
   }
 
+  /**
+   * 处理现有文档 - 直接写入文件，跳过 previewEdit 预览
+   * HBuilderX 不支持 diff 展示，因此直接将计算好的新内容写入文件
+   * 状态从 streaming 直接跳到 closed，不经过 done 等待用户确认
+   */
   private async handleExistingDocument(
     editor: any,
     currentContent: string,
     text: string,
+    filePath: string,
     streamId: string,
     toolCallId?: string,
   ) {
-    console.log("[hbuilderx] 处理现有文档开始", {
+    console.log("[hbuilderx] 处理现有文档开始（直接写入模式）", {
       streamId,
+      filePath,
       textLength: text.length,
     });
 
@@ -191,104 +203,54 @@ export class ApplyManager {
           : "LLM智能对比",
       });
 
-      // 创建PreviewEditManager来处理预览
-      const previewEditManager = new PreviewEditManager({
-        onStatusUpdate: async (status, numDiffs, fileContent) => {
-          await this.webviewProtocol.request("updateApplyState", {
-            streamId,
-            status: status || "streaming",
-            numDiffs: numDiffs || 0,
-            fileContent: fileContent || text,
-            toolCallId,
-          });
-        },
+      // 计算最终的新内容
+      let newContent: string;
+      if (isInstantApply) {
+        console.log("[hbuilderx] 从 diffLines 重建新内容（即时应用路径）");
+        // 从 diffLines 中提取 "same" 和 "new" 行来重建最终内容
+        const diffLines: DiffLine[] = [];
+        for await (const diffLine of diffLinesGenerator) {
+          diffLines.push(diffLine);
+        }
+        console.log("[hbuilderx] 收集到 diff 行数:", diffLines.length);
+
+        newContent = diffLines
+          .filter((line) => line.type === "same" || line.type === "new")
+          .map((line) => line.line)
+          .join("\n");
+      } else {
+        console.log("[hbuilderx] 使用 LLM 对比结果作为新内容");
+        newContent = text;
+      }
+
+      // 直接写入文件内容（使用 writeFile 替代 editor.edit + builder.replace）
+      // HBuilderX 的 editor.edit/positionAt API 在处理中文等多字节字符时
+      // 可能存在偏移量计算不一致的问题，导致替换范围不正确
+      console.log("[hbuilderx] 直接写入文件内容（writeFile）", {
+        filePath,
+        oldLength: currentContent.length,
+        newLength: newContent.length,
       });
 
-      if (isInstantApply) {
-        console.log(
-          "[hbuilderx] 执行即时应用 - 使用Tree-sitter分析或Diff格式检测",
-        );
-        await this.handleInstantApply(
-          editor,
-          diffLinesGenerator,
-          previewEditManager,
-          streamId,
-          toolCallId,
-        );
-      } else {
-        console.log("[hbuilderx] 执行智能差异处理 - 使用LLM进行对比分析");
-        await this.handleIntelligentDiff(editor, text, previewEditManager);
-      }
+      await this.ide.writeFile(filePath, newContent);
+      console.log("[hbuilderx] 文件写入磁盘完成");
 
-      console.log("[hbuilderx] 处理现有文档完成", { streamId });
+      // 重新打开文件以刷新编辑器中的内容
+      await this.ide.openFile(filePath);
+      console.log("[hbuilderx] 编辑器已刷新");
+
+      // 直接设置状态为 closed，跳过 "done" 等待确认环节
+      await this.webviewProtocol.request("updateApplyState", {
+        streamId,
+        status: "closed",
+        numDiffs: 0,
+        fileContent: newContent,
+        toolCallId,
+      });
+
+      console.log("[hbuilderx] 处理现有文档完成（直接写入）", { streamId });
     } catch (error) {
       console.error("[hbuilderx] 处理现有文档失败", { streamId, error });
-      throw error;
-    }
-  }
-
-  /**
-   * 处理即时应用 - 通过Tree-sitter语法分析或Diff格式检测确定的更改
-   */
-  private async handleInstantApply(
-    editor: any,
-    diffLinesGenerator: AsyncGenerator<DiffLine>,
-    previewEditManager: PreviewEditManager,
-    streamId: string,
-    toolCallId?: string,
-  ) {
-    console.log("[hbuilderx] handleInstantApply 开始");
-
-    try {
-      // 收集所有diff行
-      const diffLines: DiffLine[] = [];
-      for await (const diffLine of diffLinesGenerator) {
-        diffLines.push(diffLine);
-      }
-
-      console.log("[hbuilderx] 收集到diff行数:", diffLines.length);
-
-      // 使用PreviewEditManager进行流式差异处理
-      async function* generateDiffLines() {
-        for (const diffLine of diffLines) {
-          yield diffLine;
-        }
-      }
-
-      await previewEditManager.applyStreamDiffs(
-        editor.document.uri.fsPath,
-        generateDiffLines(),
-      );
-
-      console.log("[hbuilderx] handleInstantApply 完成");
-    } catch (error) {
-      console.error("[hbuilderx] handleInstantApply 失败", error);
-      throw error;
-    }
-  }
-
-  /**
-   * 处理智能差异 - 通过LLM进行智能对比和分析
-   */
-  private async handleIntelligentDiff(
-    editor: any,
-    newText: string,
-    previewEditManager: PreviewEditManager,
-  ) {
-    console.log("[hbuilderx] handleIntelligentDiff 开始");
-
-    try {
-      const currentContent = editor.document.getText();
-      const fileUri = editor.document.uri.fsPath;
-
-      console.log("[hbuilderx] 执行智能文本差异对比");
-
-      // 使用PreviewEditManager进行文本差异处理
-      await previewEditManager.applyTextDiff(fileUri, currentContent, newText);
-
-      console.log("[hbuilderx] handleIntelligentDiff 完成");
-    } catch (error) {
-      console.error("[hbuilderx] handleIntelligentDiff 失败", error);
       throw error;
     }
   }
