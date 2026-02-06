@@ -18,6 +18,7 @@ import {
   setHasReasoningEnabled,
   setIsSessionMetadataLoading,
   setMode,
+  setWorkspacePaths,
 } from "../redux/slices/sessionSlice";
 import { setTTSActive } from "../redux/slices/uiSlice";
 
@@ -30,7 +31,7 @@ import {
   setDocumentStylesFromLocalStorage,
   setDocumentStylesFromTheme,
 } from "../styles/theme";
-import { isJetBrains } from "../util";
+import { isHBuilderX, isJetBrains } from "../util";
 import { setLocalStorage } from "../util/localStorage";
 import { migrateLocalStorage } from "../util/migrateLocalStorage";
 import { useWebviewListener } from "./useWebviewListener";
@@ -167,6 +168,27 @@ function ParallelListeners() {
     // Override persisted state
     void dispatch(cancelStream());
 
+    // [HBuilderX] 从window.workspacePaths初始化redux store中的workspacePaths
+    if (isHBuilderX()) {
+      if (
+        (window as any).workspacePaths &&
+        Array.isArray((window as any).workspacePaths)
+      ) {
+        const paths = (window as any).workspacePaths;
+        console.log(
+          "[hbuilderx] Initializing workspacePaths from window:",
+          paths,
+        );
+        dispatch(setWorkspacePaths(paths));
+        // 同时通知IDE端默认选中的工作区（第一个）
+        if (paths.length > 0) {
+          ideMessenger.post("setSelectedWorkspace", {
+            workspacePath: paths[0],
+          });
+        }
+      }
+    }
+
     const jetbrains = isJetBrains();
     setDocumentStylesFromLocalStorage(jetbrains);
 
@@ -194,6 +216,11 @@ function ParallelListeners() {
           (window as any).workspacePaths = msg.workspacePaths;
           (window as any).vscMachineId = msg.vscMachineId;
           (window as any).vscMediaUrl = msg.vscMediaUrl;
+
+          // [HBuilderX] 同步更新redux store中的workspacePaths（JetBrains也可使用此逻辑）
+          if (msg.workspacePaths && Array.isArray(msg.workspacePaths)) {
+            dispatch(setWorkspacePaths(msg.workspacePaths));
+          }
         });
     }
   }, []);
@@ -245,9 +272,15 @@ function ParallelListeners() {
     );
   });
 
-  useWebviewListener("indexing/statusUpdate", async (data) => {
-    dispatch(updateIndexingStatus(data));
-  });
+  // [HBuilderX] HBuilderX默认禁用索引，不需要监听indexing状态更新
+  useWebviewListener(
+    "indexing/statusUpdate",
+    async (data) => {
+      dispatch(updateIndexingStatus(data));
+    },
+    [],
+    isHBuilderX(), // skip for HBuilderX
+  );
 
   useWebviewListener(
     "updateApplyState",

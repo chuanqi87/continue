@@ -7,6 +7,7 @@ import {
   setOnboardingCard,
   setShowDialog,
 } from "../../../redux/slices/uiSlice";
+import { isHBuilderX } from "../../../util";
 import { getLocalStorage, setLocalStorage } from "../../../util/localStorage";
 
 export interface UseOnboardingCard {
@@ -30,12 +31,17 @@ export function useOnboardingCard(): UseOnboardingCard {
 
   let show: boolean;
 
-  // Always show if we explicitly want to, e.g. passing free trial
-  // and setting up keys
-  if (onboardingCard.show) {
-    show = true;
+  // [HBuilderX] HBuilderX环境下屏蔽OnboardingCard显示
+  if (isHBuilderX()) {
+    show = false;
   } else {
-    show = onboardingStatus !== "Completed" && !hasDismissedOnboardingCard;
+    // Always show if we explicitly want to, e.g. passing free trial
+    // and setting up keys
+    if (onboardingCard.show) {
+      show = true;
+    } else {
+      show = onboardingStatus !== "Completed" && !hasDismissedOnboardingCard;
+    }
   }
 
   async function open(tab?: OnboardingModes) {

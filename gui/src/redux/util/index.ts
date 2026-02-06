@@ -1,4 +1,5 @@
 import { ContextItem, ToolCallState, ToolStatus } from "core";
+import { findLast } from "core/util/findLast"; // [HBuilderX] 使用polyfill替代Array.findLast
 import { IIdeMessenger } from "../../context/IdeMessenger";
 import { ChatHistoryItemWithMessageId } from "../slices/sessionSlice";
 import { RootState } from "../store";
@@ -93,7 +94,8 @@ export function findChatHistoryItemByToolCallId(
   chatHistory: RootState["session"]["history"],
   toolCallId: string,
 ): ChatHistoryItemWithMessageId | undefined {
-  return chatHistory.findLast(
+  return findLast(
+    chatHistory,
     (item) =>
       item.message.role === "tool" && item.message.toolCallId === toolCallId,
   );

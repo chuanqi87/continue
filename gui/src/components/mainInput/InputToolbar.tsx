@@ -17,10 +17,16 @@ import { selectSelectedChatModel } from "../../redux/slices/configSlice";
 import { setHasReasoningEnabled } from "../../redux/slices/sessionSlice";
 import { setReasoningSetting } from "../../redux/slices/uiSlice";
 import { exitEdit } from "../../redux/thunks/edit";
-import { getMetaKeyLabel, isMetaEquivalentKeyPressed } from "../../util";
+import {
+  getMetaKeyLabel,
+  isHBuilderX,
+  isMetaEquivalentKeyPressed,
+} from "../../util";
 import { ToolTip } from "../gui/Tooltip";
 import ModelSelect from "../modelSelection/ModelSelect";
 import { ModeSelect } from "../ModeSelect";
+import { PlatformSelect } from "../PlatformSelect";
+import { WorkspaceSelect } from "../WorkspaceSelect";
 import { Button } from "../ui";
 import { useFontSize } from "../ui/font";
 import ContextStatus from "./ContextStatus";
@@ -96,6 +102,22 @@ function InputToolbar(props: InputToolbarProps) {
               <ModelSelect />
             </HoverItem>
           </ToolTip>
+          {/* [HBuilderX] 适配平台选择器，仅HBuilderX环境下显示 */}
+          {!isInEdit && isHBuilderX() && (
+            <ToolTip place="top" content="适配平台">
+              <HoverItem className="!p-0">
+                <PlatformSelect />
+              </HoverItem>
+            </ToolTip>
+          )}
+          {/* [HBuilderX] 工作区项目选择器，仅HBuilderX环境下显示 */}
+          {!isInEdit && isHBuilderX() && (
+            <ToolTip place="top" content="选择项目">
+              <HoverItem className="!p-0">
+                <WorkspaceSelect />
+              </HoverItem>
+            </ToolTip>
+          )}
           <div className="xs:flex text-description -mb-1 hidden items-center transition-colors duration-200">
             {props.toolbarOptions?.hideImageUpload ||
               (supportsImages && (

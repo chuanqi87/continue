@@ -620,7 +620,7 @@ declare global {
     id: number;
   }
   
-  export type IdeType = "vscode" | "jetbrains";
+  export type IdeType = "vscode" | "jetbrains" | "hbuilderx";
   
   export interface IdeInfo {
     ideType: IdeType;

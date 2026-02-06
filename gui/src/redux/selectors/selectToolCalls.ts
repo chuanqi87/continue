@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { ToolStatus } from "core";
+import { findLast } from "core/util/findLast"; // [HBuilderX] 使用polyfill替代Array.findLast
 import { RootState } from "../store";
 import {
   findAllCurToolCalls,
@@ -50,7 +51,8 @@ export const selectApplyStateByToolCallId = createSelector(
     (_store: RootState, toolCallId: string) => toolCallId,
   ],
   (applyStates, toolCallId) => {
-    return applyStates.states.findLast(
+    return findLast(
+      applyStates.states,
       (state) => state.toolCallId === toolCallId,
     );
   },

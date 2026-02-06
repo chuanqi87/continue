@@ -61,6 +61,10 @@ export function isJetBrains() {
 
 export const isShareSessionSupported = () => !isJetBrains();
 
+export function isHBuilderX() {
+  return getLocalStorage("ide") === "hbuilderx";
+}
+
 export function isWebEnvironment(): boolean {
   return (
     typeof window !== "undefined" &&

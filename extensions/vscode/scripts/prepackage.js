@@ -14,7 +14,11 @@ const { copySqlite } = require("./download-copy-sqlite");
 const { generateAndCopyConfigYamlSchema } = require("./generate-copy-config");
 const { installAndCopyNodeModules } = require("./install-copy-nodemodule");
 const { npmInstall } = require("./npm-install");
-const { writeBuildTimestamp, continueDir } = require("./utils");
+const {
+  writeBuildTimestamp,
+  continueDir,
+  installNodeModuleInTempDirAndCopyToCurrent,
+} = require("./utils");
 
 // Clear folders that will be packaged to ensure clean slate
 rimrafSync(path.join(__dirname, "..", "bin"));
@@ -339,6 +343,108 @@ void (async () => {
     await copySqlite(target);
   } else {
     console.log("[info] Skipping sqlite download because SKIP_INSTALLS=true");
+  }
+
+  // GitHub Actions doesn't support ARM, so we need to download pre-saved binaries
+  // 02/07/25 - the above comment is out of date, there is now support for ARM runners on GitHub Actions
+  if (isArmTarget) {
+    // lancedb binary
+    const packageToInstall = {
+      "darwin-arm64": "@lancedb/vectordb-darwin-arm64",
+      "linux-arm64": "@lancedb/vectordb-linux-arm64-gnu",
+      "win32-arm64": "@lancedb/vectordb-win32-arm64-msvc",
+    }[target];
+    console.log(
+      "[info] Downloading pre-built lancedb binary: " + packageToInstall,
+    );
+
+    await installNodeModuleInTempDirAndCopyToCurrent(
+      packageToInstall,
+      "@lancedb",
+    );
+
+    // Replace the installed with pre-built
+    rimrafSync("../../core/node_modules/sqlite3/build");
+
+    // 优先使用本地缓存的 sqlite3 包
+    const localBaseDir =
+      process.env.CONTINUE_SQLITE3_LOCAL_DIR ||
+      "/Users/legend/Downloads/sqlite3";
+    const localFileNameMap = {
+      "darwin-arm64": "sqlite3-v5.1.7-napi-v6-darwin-arm64.tar.gz",
+      "linux-arm64": "sqlite3-v5.1.7-napi-v3-linux-arm64.tar.gz",
+      "win32-arm64": "sqlite3-v5.1.7-napi-v6-win32-arm64.tar.gz",
+    };
+    const localFilePath = path.join(
+      localBaseDir,
+      localFileNameMap[target] || "",
+    );
+
+    let usedLocal = false;
+    const destTarPath = "../../core/node_modules/sqlite3/build.tar.gz";
+
+    // 尝试从本地复制
+    if (fs.existsSync(localFilePath)) {
+      console.log(`[hbuilderx] Using local sqlite3 binary: ${localFilePath}`);
+      try {
+        fs.copyFileSync(localFilePath, destTarPath);
+        usedLocal = true;
+      } catch (e) {
+        console.warn(
+          "[hbuilderx] Error copying local sqlite3 binary, will download from remote:",
+          e.message,
+        );
+      }
+    } else {
+      console.log(
+        "[hbuilderx] Local sqlite3 binary not found, will download from remote",
+      );
+    }
+
+    // 如果本地不存在则从远程下载
+    if (!usedLocal) {
+      console.log(
+        `[hbuilderx] Downloading pre-built sqlite3 binary for ${target}`,
+      );
+      const downloadUrl = {
+        "darwin-arm64":
+          "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-darwin-arm64.tar.gz",
+        "linux-arm64":
+          "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v3-linux-arm64.tar.gz",
+        "win32-arm64":
+          "https://github.com/TryGhost/node-sqlite3/releases/download/v5.1.7/sqlite3-v5.1.7-napi-v6-win32-arm64.tar.gz",
+      }[target];
+
+      if (!downloadUrl) {
+        throw new Error(
+          `[hbuilderx] 未找到目标平台 ${target} 的SQLite3下载URL`,
+        );
+      }
+
+      execCmdSync(
+        `curl -L --fail --retry 5 --retry-all-errors --connect-timeout 30 -o "${destTarPath}" "${downloadUrl}"`,
+      );
+    }
+
+    // 解压
+    execCmdSync("cd ../../core/node_modules/sqlite3 && tar -xvzf build.tar.gz");
+
+    // Download and unzip esbuild
+    console.log("[info] Downloading pre-built esbuild binary");
+    rimrafSync("node_modules/@esbuild");
+    fs.mkdirSync("node_modules/@esbuild", { recursive: true });
+    execCmdSync(
+      `curl -o node_modules/@esbuild/esbuild.zip https://continue-server-binaries.s3.us-west-1.amazonaws.com/${target}/esbuild.zip`,
+    );
+    execCmdSync(`cd node_modules/@esbuild && unzip esbuild.zip`);
+    fs.unlinkSync("node_modules/@esbuild/esbuild.zip");
+  } else {
+    // Download esbuild from npm in tmp and copy over
+    console.log("npm installing esbuild binary");
+    await installNodeModuleInTempDirAndCopyToCurrent(
+      "esbuild@0.17.19",
+      "@esbuild",
+    );
   }
 
   console.log("[info] Copying sqlite node binding from core");

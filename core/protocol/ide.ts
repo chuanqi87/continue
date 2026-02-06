@@ -95,6 +95,7 @@ export type ToIdeFromWebviewOrCoreProtocol = {
   logoutOfControlPlane: [undefined, void];
   reportError: [any, void];
   closeSidebar: [undefined, void];
+  setSelectedWorkspace: [{ workspacePath: string }, void];
 };
 
 export type ToWebviewOrCoreFromIdeProtocol = {

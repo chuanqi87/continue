@@ -17,6 +17,7 @@ export enum BuiltInToolNames {
   FetchUrlContent = "fetch_url_content",
   CodebaseTool = "codebase",
   ReadSkill = "read_skill",
+  BuildPackage = "build_package",
 
   // excluded from allTools for now
   ViewRepoMap = "view_repo_map",

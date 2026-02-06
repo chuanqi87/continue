@@ -161,6 +161,11 @@ function loadSerializedConfig(
     );
   }
 
+  // HBuilderX默认禁用索引，除非用户显式开启
+  if (ideType === "hbuilderx" && config.disableIndexing === undefined) {
+    config.disableIndexing = true;
+  }
+
   if (os.platform() === "linux" && !isSupportedLanceDbCpuTargetForLinux(ide)) {
     config.disableIndexing = true;
   }
@@ -439,7 +444,7 @@ async function intermediateToFinalConfig({
         }
       }
     }
-    if (ideInfo.ideType === "vscode") {
+    if (ideInfo.ideType === "vscode" || ideInfo.ideType === "hbuilderx") {
       return new TransformersJsEmbeddingsProvider();
     }
     return null;
@@ -615,7 +620,7 @@ async function intermediateToFinalConfig({
 
   // Add transformers JS to the embed models list if not already added
   if (
-    ideInfo.ideType === "vscode" &&
+    (ideInfo.ideType === "vscode" || ideInfo.ideType === "hbuilderx") &&
     !continueConfig.modelsByRole.embed.find(
       (m) => m.providerName === "transformers.js",
     )

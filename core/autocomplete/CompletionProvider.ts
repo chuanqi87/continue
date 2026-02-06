@@ -298,7 +298,7 @@ export class CompletionProvider {
       }
 
       const ideType = (await this.ide.getIdeInfo()).ideType;
-      if (ideType === "jetbrains") {
+      if (ideType === "jetbrains" || ideType === "hbuilderx") {
         this.markDisplayed(input.completionId, outcome);
       }
 

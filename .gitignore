@@ -178,4 +178,6 @@ keys
 .users_cache.json
 .copy-status
 .copy-log
-
+extensions/hbuilderx/gui
+gui/dist-hbuilderx/
+extensions/hbuilderx/.sqlite3-cache/

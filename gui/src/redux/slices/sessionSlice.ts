@@ -223,6 +223,9 @@ type SessionState = {
   contextPercentage?: number;
   inlineErrorMessage?: InlineErrorMessageType;
   compactionLoading: Record<number, boolean>; // Track compaction loading by message index
+  harmonyPlatform: "default" | "app" | "service"; // [HBuilderX] 鸿蒙平台类型: default-默认, app-应用, service-元服务
+  workspacePaths: string[]; // [HBuilderX] IDE中的项目路径列表
+  selectedWorkspacePath: string; // [HBuilderX] 当前选中的项目路径
 };
 
 export const INITIAL_SESSION_STATE: SessionState = {
@@ -243,6 +246,9 @@ export const INITIAL_SESSION_STATE: SessionState = {
   lastSessionId: undefined,
   newestToolbarPreviewForInput: {},
   compactionLoading: {},
+  harmonyPlatform: "default", // [HBuilderX] 默认为default
+  workspacePaths: [], // [HBuilderX] 项目路径列表
+  selectedWorkspacePath: "", // [HBuilderX] 当前选中的项目路径
 };
 
 export const sessionSlice = createSlice({
@@ -1001,6 +1007,25 @@ export const sessionSlice = createSlice({
     setContextPercentage: (state, action: PayloadAction<number>) => {
       state.contextPercentage = action.payload;
     },
+    setHarmonyPlatform: (
+      state,
+      action: PayloadAction<"default" | "app" | "service">,
+    ) => {
+      state.harmonyPlatform = action.payload;
+    },
+    setWorkspacePaths: (state, action: PayloadAction<string[]>) => {
+      state.workspacePaths = action.payload;
+      // 如果当前没有选中的项目路径，或者选中的路径不在新列表中，则选中第一个
+      if (
+        !state.selectedWorkspacePath ||
+        !action.payload.includes(state.selectedWorkspacePath)
+      ) {
+        state.selectedWorkspacePath = action.payload[0] || "";
+      }
+    },
+    setSelectedWorkspacePath: (state, action: PayloadAction<string>) => {
+      state.selectedWorkspacePath = action.payload;
+    },
   },
   selectors: {
     selectIsGatheringContext: (state) => {
@@ -1090,6 +1115,9 @@ export const {
   setIsPruned,
   setContextPercentage,
   setCompactionLoading,
+  setHarmonyPlatform,
+  setWorkspacePaths,
+  setSelectedWorkspacePath,
 } = sessionSlice.actions;
 
 export const { selectIsGatheringContext } = sessionSlice.selectors;

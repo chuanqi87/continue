@@ -18,7 +18,10 @@ export const getBaseToolDefinitions = () => [
 export const getConfigDependentToolDefinitions = async (
   params: ConfigDependentToolParams,
 ): Promise<Tool[]> => {
-  const { modelName, isSignedIn, enableExperimentalTools, isRemote } = params;
+  const { modelName, isSignedIn, enableExperimentalTools, isRemote, ide } =
+    params;
+  const ideInfo = await ide.getIdeInfo();
+  const isHBuilderX = ideInfo.ideType === "hbuilderx";
   const tools: Tool[] = [];
 
   tools.push(await toolDefinitions.requestRuleTool(params));
@@ -41,13 +44,20 @@ export const getConfigDependentToolDefinitions = async (
   if (modelName && isRecommendedAgentModel(modelName)) {
     tools.push(toolDefinitions.multiEditTool);
   } else {
-    tools.push(toolDefinitions.editFileTool);
-    tools.push(toolDefinitions.singleFindAndReplaceTool);
+    if (!isHBuilderX) {
+      tools.push(toolDefinitions.editFileTool);
+      tools.push(toolDefinitions.singleFindAndReplaceTool);
+    }
   }
 
   // missing support for remote os calls: https://github.com/microsoft/vscode/issues/252269
   if (!isRemote) {
     tools.push(toolDefinitions.grepSearchTool);
+  }
+
+  // HBuilderX build package tool requires local CLI access
+  if (isHBuilderX && !isRemote) {
+    tools.push(toolDefinitions.buildPackageTool);
   }
 
   return tools;

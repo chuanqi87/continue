@@ -1,3 +1,6 @@
+// [HBuilderX] 首先加载 polyfills 以确保HBuilderX内置浏览器兼容性
+import "./polyfills";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";

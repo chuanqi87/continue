@@ -73,6 +73,44 @@ export const handleVSCMetaKeyIssues = async (
   }
 };
 
+/**
+ * This handles HBuilderX specific key issues
+ * HBuilderX主要使用Ctrl键，需要特殊处理中文输入法和特定快捷键
+ */
+export const handleHBuilderXKeyIssues = async (
+  e: KeyboardEvent,
+  editor: Editor,
+) => {
+  const text = editor.state.doc.textBetween(
+    editor.state.selection.from,
+    editor.state.selection.to,
+  );
+
+  const handlers: Record<string, () => Promise<void>> = {
+    x: () => handleCutOperation(text, editor),
+    c: () => handleCopyOperation(text),
+    v: () => handlePasteOperation(editor),
+    z: () => {
+      return e.shiftKey
+        ? handleRedoOperation(editor)
+        : handleUndoOperation(editor);
+    },
+    // HBuilderX特定的按键处理
+    Backspace: async () => {
+      // HBuilderX中的退格处理，类似于VSCode
+      if (e.ctrlKey) {
+        deleteSingleWord(editor);
+      }
+    },
+  };
+
+  if (e.key in handlers) {
+    e.stopPropagation();
+    e.preventDefault();
+    await handlers[e.key]();
+  }
+};
+
 const deleteSingleWord = (editor: Editor) => {
   const textContent =
     editor.state.doc.resolve(editor.state.selection.from).parent.textContent ??

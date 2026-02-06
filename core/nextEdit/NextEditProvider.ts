@@ -543,19 +543,19 @@ export class NextEditProvider {
       // Handle NextEditProvider-specific state.
       this.previousCompletions.push(outcome);
 
-      // Mark as displayed for JetBrains
-      await this._markDisplayedIfJetBrains(helper.input.completionId, outcome);
+      // Mark as displayed for JetBrains/HBuilderX
+      await this._markDisplayedIfNeeded(helper.input.completionId, outcome);
     }
 
     return outcome;
   }
 
-  private async _markDisplayedIfJetBrains(
+  private async _markDisplayedIfNeeded(
     completionId: string,
     outcome: NextEditOutcome,
   ): Promise<void> {
     const ideType = (await this.ide.getIdeInfo()).ideType;
-    if (ideType === "jetbrains") {
+    if (ideType === "jetbrains" || ideType === "hbuilderx") {
       this.markDisplayed(completionId, outcome);
     }
   }

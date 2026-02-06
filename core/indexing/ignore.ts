@@ -187,6 +187,8 @@ export const ADDITIONAL_INDEXING_IGNORE_DIRS = [
   ".vscode/",
   ".idea/",
   ".vs/",
+  ".hbuilderx/",
+  "unpackage/",
 ];
 
 // Combined patterns: security + additional

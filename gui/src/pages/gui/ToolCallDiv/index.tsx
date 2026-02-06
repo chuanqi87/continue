@@ -61,7 +61,8 @@ export function ToolCallDiv({
     if (
       functionName === BuiltInToolNames.SingleFindAndReplace ||
       functionName === BuiltInToolNames.MultiEdit ||
-      functionName === BuiltInToolNames.RunTerminalCommand
+      functionName === BuiltInToolNames.RunTerminalCommand ||
+      functionName === BuiltInToolNames.BuildPackage
     ) {
       return (
         <div className="flex flex-col px-1">

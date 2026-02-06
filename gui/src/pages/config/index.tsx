@@ -5,10 +5,11 @@ import { AssistantAndOrgListbox } from "../../components/AssistantAndOrgListbox"
 import Alert from "../../components/gui/Alert";
 import { Divider } from "../../components/ui/Divider";
 import { TabGroup } from "../../components/ui/TabGroup";
+import { CliInstallBanner } from "../../components/CliInstallBanner";
 import { useAuth } from "../../context/Auth";
 import { useNavigationListener } from "../../hooks/useNavigationListener";
+import { isHBuilderX } from "../../util";
 import { bottomTabSections, getAllTabs, topTabSections } from "./configTabs";
-import { CliInstallBanner } from "../../components/CliInstallBanner";
 import { AccountDropdown } from "./features/account/AccountDropdown";
 
 function ConfigPage() {
@@ -94,7 +95,8 @@ function ConfigPage() {
           <div className="space-y-6 px-4 py-4">
             {allTabs.find((tab) => tab.id === activeTab)?.component}
           </div>
-          <CliInstallBanner permanentDismissal={true} />
+          {/* [HBuilderX] HBuilderX环境下不显示CLI安装横幅 */}
+          {!isHBuilderX() && <CliInstallBanner permanentDismissal={true} />}
         </div>
       </div>
     </div>

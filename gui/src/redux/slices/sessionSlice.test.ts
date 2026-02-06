@@ -76,6 +76,9 @@ describe("sessionSlice streamUpdate", () => {
     newestToolbarPreviewForInput: {},
     isSessionMetadataLoading: false,
     compactionLoading: {},
+    harmonyPlatform: "default" as const,
+    workspacePaths: [] as string[],
+    selectedWorkspacePath: "",
   });
 
   describe("Basic Chat Message", () => {

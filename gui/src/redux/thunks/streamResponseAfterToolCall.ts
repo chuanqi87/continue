@@ -1,5 +1,6 @@
 import { createAsyncThunk, unwrapResult } from "@reduxjs/toolkit";
 import { ChatMessage } from "core";
+import { findLast } from "core/util/findLast"; // [HBuilderX] 使用polyfill替代Array.findLast
 import { renderContextItems } from "core/util/messageContent";
 import { selectCurrentToolCalls } from "../selectors/selectToolCalls";
 import {
@@ -67,7 +68,8 @@ export const streamResponseAfterToolCall = createAsyncThunk<
 
         // Check if we should continue streaming based on tool call completion
         const history = getState().session.history;
-        const assistantMessage = history.findLast(
+        const assistantMessage = findLast(
+          history,
           (item) =>
             item.message.role === "assistant" &&
             item.toolCallStates?.some((tc) => tc.toolCallId === toolCallId),

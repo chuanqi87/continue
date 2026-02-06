@@ -769,7 +769,7 @@ export interface Thread {
   id: number;
 }
 
-export type IdeType = "vscode" | "jetbrains";
+export type IdeType = "hbuilderx" | "vscode" | "jetbrains";
 
 export interface IdeInfo {
   ideType: IdeType;

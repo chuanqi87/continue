@@ -16,10 +16,13 @@ export default defineConfig({
   ],
   build: {
     sourcemap: true,
+    // [HBuilderX] 降低目标版本以支持HBuilderX内置浏览器（QtWebEngine）
+    target: "es2015",
 
     // Change the output .js filename to not include a hash
     rollupOptions: {
       input: {
+        // [HBuilderX] HBuilderX 使用单入口，index.html 由代码动态生成
         index: resolve(__dirname, "index.html"),
         indexConsole: resolve(__dirname, "indexConsole.html"),
       },
@@ -27,6 +30,8 @@ export default defineConfig({
         entryFileNames: `assets/[name].js`,
         chunkFileNames: `assets/[name].js`,
         assetFileNames: `assets/[name].[ext]`,
+        // [HBuilderX] Windows 使用 IIFE（内置浏览器不支持 ES Module），macOS 使用 ES Module
+        format: process.env.HBUILDERX_PLATFORM === "win32" ? "iife" : "es",
       },
     },
   },

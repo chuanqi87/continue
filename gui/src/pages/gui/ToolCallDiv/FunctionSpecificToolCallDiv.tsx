@@ -1,6 +1,7 @@
 import { ToolCallState } from "core";
 import { BuiltInToolNames } from "core/tools/builtIn";
 import { EditOperation } from "core/tools/definitions/multiEdit";
+import { BuildPackage } from "./BuildPackage";
 import { CreateFile } from "./CreateFile";
 import { EditFile } from "./EditFile";
 import { FindAndReplaceDisplay } from "./FindAndReplace";
@@ -70,6 +71,15 @@ function FunctionSpecificToolCallDiv({
       return (
         <RunTerminalCommand
           command={args?.command ?? ""}
+          toolCallState={toolCallState}
+          toolCallId={toolCall.id}
+        />
+      );
+    case BuiltInToolNames.BuildPackage:
+      return (
+        <BuildPackage
+          type={args?.type ?? ""}
+          projectName={args?.projectName ?? ""}
           toolCallState={toolCallState}
           toolCallId={toolCall.id}
         />

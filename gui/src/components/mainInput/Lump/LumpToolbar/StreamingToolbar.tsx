@@ -1,4 +1,9 @@
-import { getAltKeyLabel, getMetaKeyLabel, isJetBrains } from "../../../../util";
+import {
+  getAltKeyLabel,
+  getMetaKeyLabel,
+  isHBuilderX,
+  isJetBrains,
+} from "../../../../util";
 import { GeneratingIndicator } from "./GeneratingIndicator";
 
 interface StreamingToolbarProps {
@@ -10,7 +15,11 @@ export function StreamingToolbar({
   onStop,
   displayText = "Stop",
 }: StreamingToolbarProps) {
-  const jetbrains = isJetBrains();
+  const getKeyLabel = () => {
+    if (isJetBrains()) return getAltKeyLabel();
+    if (isHBuilderX()) return "Ctrl";
+    return getMetaKeyLabel();
+  };
 
   return (
     <div className="flex w-full items-center justify-between">
@@ -22,7 +31,7 @@ export function StreamingToolbar({
         <span className="text-description">{displayText}</span>
         {/* JetBrains overrides cmd+backspace, so we have to use another shortcut */}
         <span className="text-description-muted ml-1 opacity-75">
-          {jetbrains ? getAltKeyLabel() : getMetaKeyLabel()}⌫
+          {getKeyLabel()}⌫
         </span>
       </div>
     </div>

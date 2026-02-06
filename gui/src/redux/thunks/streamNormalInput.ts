@@ -120,10 +120,12 @@ export const streamNormalInput = createAsyncThunk<
     );
 
     // Construct messages (excluding system message)
+    // [HBuilderX] 传入harmonyPlatform以支持鸿蒙平台预置提示
     const baseSystemMessage = getBaseSystemMessage(
       state.session.mode,
       selectedChatModel,
       activeTools,
+      state.session.harmonyPlatform,
     );
 
     const systemMessage = systemToolsFramework

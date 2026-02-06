@@ -78,8 +78,11 @@ export const uiSlice = createSlice({
     },
     // Tools
     addTool: (state, action: PayloadAction<Tool>) => {
-      state.toolSettings[action.payload.function.name] =
-        action.payload.defaultToolPolicy ?? DEFAULT_TOOL_SETTING;
+      // [HBuilderX] 只在还没有设置时才添加默认值，避免覆盖持久化的设置
+      if (state.toolSettings[action.payload.function.name] === undefined) {
+        state.toolSettings[action.payload.function.name] =
+          action.payload.defaultToolPolicy ?? DEFAULT_TOOL_SETTING;
+      }
     },
     setToolPolicy: (
       state,
@@ -122,7 +125,10 @@ export const uiSlice = createSlice({
     },
     // Rules
     addRule: (state, action: PayloadAction<RuleWithSource>) => {
-      state.ruleSettings[action.payload.name!] = DEFAULT_RULE_SETTING;
+      // [HBuilderX] 只在还没有设置时才添加默认值，避免覆盖持久化的设置
+      if (state.ruleSettings[action.payload.name!] === undefined) {
+        state.ruleSettings[action.payload.name!] = DEFAULT_RULE_SETTING;
+      }
     },
     toggleRuleSetting: (state, action: PayloadAction<string>) => {
       const setting = state.ruleSettings[action.payload];

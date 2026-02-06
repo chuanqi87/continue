@@ -1,0 +1,567 @@
+{
+  "hx": {
+    "__type__": "[Proxy]",
+    "version": "1.52.0",
+    "handler": {},
+    "isRevoked": false,
+    "target": {
+      "_toDispose": "[Set(0)]",
+      "Breakpoint": "[function]",
+      "CallHierarchyIncomingCall": "[class]",
+      "CallHierarchyItem": "[class]",
+      "CallHierarchyOutgoingCall": "[class]",
+      "CancellationTokenSource": "[class]",
+      "CellKind": {
+        "1": "Markdown",
+        "2": "Code",
+        "Markdown": 1,
+        "Code": 2
+      },
+      "CellOutputKind": {
+        "1": "Text",
+        "2": "Error",
+        "3": "Rich",
+        "Text": 1,
+        "Error": 2,
+        "Rich": 3
+      },
+      "CodeAction": "[function]",
+      "CodeActionKind": "[function]",
+      "CodeActionTrigger": {
+        "1": "Automatic",
+        "2": "Manual",
+        "Automatic": 1,
+        "Manual": 2
+      },
+      "CodeInset": "[class]",
+      "CodeLens": "[function]",
+      "Color": "[function]",
+      "ColorFormat": {
+        "0": "RGB",
+        "1": "HEX",
+        "2": "HSL",
+        "RGB": 0,
+        "HEX": 1,
+        "HSL": 2
+      },
+      "ColorInformation": "[function]",
+      "ColorPresentation": "[function]",
+      "ColorTheme": "[function]",
+      "ColorThemeKind": {
+        "1": "Light",
+        "2": "Dark",
+        "3": "HighContrast",
+        "Light": 1,
+        "Dark": 2,
+        "HighContrast": 3
+      },
+      "CommentMode": {
+        "0": "Editing",
+        "1": "Preview",
+        "Editing": 0,
+        "Preview": 1
+      },
+      "CommentThreadCollapsibleState": {
+        "0": "Collapsed",
+        "1": "Expanded",
+        "Collapsed": 0,
+        "Expanded": 1
+      },
+      "CompletionItem": "[function]",
+      "CompletionItemKind": {
+        "0": "Text",
+        "1": "Method",
+        "2": "Function",
+        "3": "Constructor",
+        "4": "Field",
+        "5": "Variable",
+        "6": "Class",
+        "7": "Interface",
+        "8": "Module",
+        "9": "Property",
+        "10": "Unit",
+        "11": "Value",
+        "12": "Enum",
+        "13": "Keyword",
+        "14": "Snippet"
+      },
+      "CompletionItemTag": {
+        "1": "Deprecated",
+        "Deprecated": 1
+      },
+      "CompletionList": "[function]",
+      "CompletionTriggerKind": {
+        "0": "Invoke",
+        "1": "TriggerCharacter",
+        "2": "TriggerForIncompleteCompletions",
+        "Invoke": 0,
+        "TriggerCharacter": 1,
+        "TriggerForIncompleteCompletions": 2
+      },
+      "ConfigurationTarget": {
+        "1": "Global",
+        "2": "Workspace",
+        "3": "WorkspaceFolder",
+        "Global": 1,
+        "Workspace": 2,
+        "WorkspaceFolder": 3
+      },
+      "CustomExecution": "[class]",
+      "DataBreakpoint": "[function]",
+      "debug": {
+        "init": "[function]",
+        "registerDebugAdapterDescriptorFactory": "[function]",
+        "DebugAdapterExecutable": "[class]",
+        "DebugAdapterNamedPipeServer": "[class]",
+        "DebugAdapterInlineImplementation": "[class]",
+        "DebugAdapterServer": "[class]",
+        "startDebugging": "[function]"
+      },
+      "DebugConfigurationProviderTriggerKind": {
+        "1": "Initial",
+        "2": "Dynamic",
+        "Initial": 1,
+        "Dynamic": 2
+      },
+      "DebugConsoleMode": {
+        "0": "Separate",
+        "1": "MergeWithParent",
+        "Separate": 0,
+        "MergeWithParent": 1
+      },
+      "Decoration": "[class]",
+      "DecorationRangeBehavior": {
+        "0": "OpenOpen",
+        "1": "ClosedClosed",
+        "2": "OpenClosed",
+        "3": "ClosedOpen",
+        "OpenOpen": 0,
+        "ClosedClosed": 1,
+        "OpenClosed": 2,
+        "ClosedOpen": 3
+      },
+      "Diagnostic": "[function]",
+      "DiagnosticRelatedInformation": "[function]",
+      "DiagnosticSeverity": {
+        "0": "Error",
+        "1": "Warning",
+        "2": "Information",
+        "3": "Hint",
+        "Error": 0,
+        "Warning": 1,
+        "Information": 2,
+        "Hint": 3
+      },
+      "DiagnosticTag": {
+        "1": "Unnecessary",
+        "2": "Deprecated",
+        "Unnecessary": 1,
+        "Deprecated": 2
+      },
+      "Disposable": "[function]",
+      "DocumentHighlight": "[function]",
+      "DocumentHighlightKind": {
+        "0": "Text",
+        "1": "Read",
+        "2": "Write",
+        "Text": 0,
+        "Read": 1,
+        "Write": 2
+      },
+      "DocumentLink": "[function]",
+      "DocumentSymbol": "[function]",
+      "EndOfLine": {
+        "1": "LF",
+        "2": "CRLF",
+        "LF": 1,
+        "CRLF": 2
+      },
+      "env": {
+        "__type__": "[Proxy]",
+        "handler": {},
+        "isRevoked": false,
+        "target": {
+          "appArch": "[function]",
+          "appData": "[function]",
+          "appName": "[function]",
+          "appRoot": "[function]",
+          "appVersion": "[function]",
+          "BUILTIN_BROWSER_REMOTE_DEBUG_PORT": "[function]",
+          "clipboard": {
+            "readText": "[function]",
+            "writeText": "[function]"
+          },
+          "cpuArch": "[function]",
+          "init": "[function]",
+          "language": "zh_CN",
+          "openExternal": "[function]"
+        }
+      },
+      "EnvironmentVariableMutatorType": {
+        "1": "Replace",
+        "2": "Append",
+        "3": "Prepend",
+        "Replace": 1,
+        "Append": 2,
+        "Prepend": 3
+      },
+      "EvaluableExpression": "[function]",
+      "Extension": "[class]",
+      "ExtensionKind": {
+        "1": "UI",
+        "2": "Workspace",
+        "UI": 1,
+        "Workspace": 2
+      },
+      "ExtensionMode": {
+        "1": "Production",
+        "2": "Development",
+        "3": "Test",
+        "Production": 1,
+        "Development": 2,
+        "Test": 3
+      },
+      "ExtensionRuntime": {
+        "1": "Node",
+        "2": "Webworker",
+        "Node": 1,
+        "Webworker": 2
+      },
+      "extensions": {
+        "getExtension": "[function]",
+        "onDidChange": "[accessor]",
+        "all": "[accessor]"
+      },
+      "FileChangeType": {
+        "1": "Changed",
+        "2": "Created",
+        "3": "Deleted",
+        "Changed": 1,
+        "Created": 2,
+        "Deleted": 3
+      },
+      "FileEditType": {
+        "1": "File",
+        "2": "Text",
+        "3": "Cell",
+        "File": 1,
+        "Text": 2,
+        "Cell": 3
+      },
+      "FileSystemError": "[function]",
+      "FoldingRange": "[function]",
+      "FoldingRangeKind": {
+        "1": "Comment",
+        "2": "Imports",
+        "3": "Region",
+        "Comment": 1,
+        "Imports": 2,
+        "Region": 3
+      },
+      "FunctionBreakpoint": "[function]",
+      "Hover": "[function]",
+      "IndentAction": {
+        "0": "None",
+        "1": "Indent",
+        "2": "IndentOutdent",
+        "3": "Outdent",
+        "None": 0,
+        "Indent": 1,
+        "IndentOutdent": 2,
+        "Outdent": 3
+      },
+      "init": "[function]",
+      "languages": {
+        "createDiagnosticCollection": "[function]",
+        "getAvailableSnippets": "[function]",
+        "getDiagnostics": "[function]",
+        "getTokenInformationAtPosition": "[function]",
+        "match": "[function]",
+        "matchLangId": "[function]",
+        "onDidChangeDiagnostics": "[function]",
+        "registerCallHierarchyProvider": "[function]",
+        "registerCodeActionsProvider": "[function]",
+        "registerCodeLensProvider": "[function]",
+        "registerColorProvider": "[function]",
+        "registerCompletionItemProvider": "[function]",
+        "registerDeclarationProvider": "[function]",
+        "registerDefinitionProvider": "[function]",
+        "registerDocumentFormattingEditProvider": "[function]",
+        "registerDocumentHighlightProvider": "[function]",
+        "registerDocumentLinkProvider": "[function]",
+        "registerDocumentRangeFormattingEditProvider": "[function]",
+        "registerDocumentRangeSemanticTokensProvider": "[function]",
+        "registerDocumentSymbolProvider": "[function]",
+        "registerEvaluatableExpressionProvider": "[function]",
+        "registerFoldingRangeProvider": "[function]",
+        "registerHoverProvider": "[function]",
+        "registerImplementationProvider": "[function]",
+        "registerInlineCompletionItemProvider": "[function]",
+        "registerInlineValuesProvider": "[function]",
+        "registerLinkedEditingRangeProvider": "[function]",
+        "registerOnTypeFormattingEditProvider": "[function]",
+        "registerReferenceProvider": "[function]",
+        "registerRenameProvider": "[function]",
+        "registerSelectionRangeProvider": "[function]",
+        "registerSignatureHelpProvider": "[function]",
+        "registerTypeDefinitionProvider": "[function]",
+        "registerTypeHierarchyProvider": "[function]",
+        "registerWorkspaceSymbolProvider": "[function]",
+        "setLanguageConfiguration": "[function]",
+        "setTextDocumentLanguage": "[function]"
+      },
+      "Location": "[function]",
+      "LogLevel": {
+        "0": "Off",
+        "1": "Trace",
+        "2": "Debug",
+        "3": "Info",
+        "4": "Warning",
+        "5": "Error",
+        "6": "Critical"
+      },
+      "MarkdownString": "[function]",
+      "NotebookCellRunState": {
+        "1": "Running",
+        "2": "Idle",
+        "3": "Success",
+        "4": "Error"
+      },
+      "NotebookCellStatusBarAlignment": {
+        "1": "Left",
+        "2": "Right"
+      },
+      "NotebookEditorRevealType": {
+        "0": "Default",
+        "1": "InCenter",
+        "2": "InCenterIfOutsideViewport"
+      },
+      "NotebookRunState": {
+        "1": "Running",
+        "2": "Idle"
+      },
+      "ParameterInformation": "[function]",
+      "Position": "[function]",
+      "ProcessExecution": "[function]",
+      "ProgressLocation": {
+        "1": "SourceControl",
+        "10": "Window",
+        "15": "Notification"
+      },
+      "QuickInputButtons": "[function]",
+      "Range": "[function]",
+      "RelativePattern": "[function]",
+      "RemoteAuthorityResolverError": "[class]",
+      "ResolvedAuthority": "[class]",
+      "Selection": "[function]",
+      "SelectionRange": "[function]",
+      "SemanticTokens": "[class]",
+      "SemanticTokensBuilder": "[class]",
+      "SemanticTokensEdit": "[class]",
+      "SemanticTokensEdits": "[class]",
+      "SemanticTokensLegend": "[class]",
+      "ShellExecution": "[function]",
+      "ShellQuoting": {
+        "1": "Escape",
+        "2": "Strong",
+        "3": "Weak"
+      },
+      "SignatureHelp": "[function]",
+      "SignatureHelpTriggerKind": {
+        "1": "Invoke",
+        "2": "TriggerCharacter",
+        "3": "ContentChange"
+      },
+      "SignatureInformation": "[function]",
+      "SnippetString": "[function]",
+      "SourceBreakpoint": "[function]",
+      "SourceControlInputBoxValidationType": {
+        "0": "Error",
+        "1": "Warning",
+        "2": "Information"
+      },
+      "StandardTokenType": {
+        "0": "Other",
+        "1": "Comment",
+        "2": "String",
+        "3": "RegEx"
+      },
+      "StatusBarAlignment": {
+        "1": "Left",
+        "2": "Right"
+      },
+      "SymbolInformation": "[function]",
+      "SymbolKind": {
+        "0": "File",
+        "1": "Module",
+        "2": "Namespace",
+        "3": "Package",
+        "4": "Class",
+        "5": "Method"
+      },
+      "Task": "[function]",
+      "TaskGroup": "[function]",
+      "TaskPanelKind": {
+        "1": "Shared",
+        "2": "Dedicated",
+        "3": "New"
+      },
+      "TaskRevealKind": {
+        "1": "Always",
+        "2": "Silent",
+        "3": "Never"
+      },
+      "TaskScope": {
+        "1": "Global",
+        "2": "Workspace"
+      },
+      "TextDocumentSaveReason": {
+        "1": "Manual",
+        "2": "AfterDelay",
+        "3": "FocusOut"
+      },
+      "TextEdit": {
+        "__type__": "[function]",
+        "replace": "[function]",
+        "insert": "[function]",
+        "delete": "[function]"
+      },
+      "TextEditorLineNumbersStyle": {
+        "0": "Off",
+        "1": "On",
+        "2": "Relative"
+      },
+      "TextEditorRevealType": {
+        "0": "Default",
+        "1": "InCenter",
+        "2": "InCenterIfOutsideViewport",
+        "3": "AtTop"
+      },
+      "TextEditorSelectionChangeKind": {
+        "1": "Keyboard",
+        "2": "Mouse",
+        "3": "Command"
+      },
+      "ThemeColor": "[function]",
+      "ThemeIcon": "[function]",
+      "TreeItem": "[function]",
+      "TreeItemCollapsibleState": {
+        "0": "None",
+        "1": "Collapsed",
+        "2": "Expanded"
+      },
+      "Uri": "[function]",
+      "ViewColumn": {
+        "1": "One",
+        "2": "Two",
+        "3": "Three",
+        "4": "Four",
+        "5": "Five",
+        "6": "Six",
+        "7": "Seven",
+        "8": "Eight",
+        "9": "Nine",
+        "-1": "Beside",
+        "-2": "Active"
+      },
+      "window": {
+        "__type__": "[Proxy]",
+        "handler": {},
+        "isRevoked": false,
+        "target": {
+          "activeTextEditor": "[ExtHostTextEditor]",
+          "clearStatusBarMessage": "[function]",
+          "createOutputChannel": "[function]",
+          "createQuickPick": "[function]",
+          "createStatusBarItem": "[function]",
+          "createTerminal": "[function]",
+          "createTreeView": "[function]",
+          "createWebviewPanel": "[function]",
+          "getActiveTextEditor": "[function]",
+          "getActiveWindow": "[function]",
+          "getCursorPosition": "[function]",
+          "getView": "[function]",
+          "init": "[function]",
+          "onDidChangeActiveTextEditor": "[function]",
+          "onDidChangeTextEditorSelection": "[function]",
+          "onDidChangeTextEditorVisibleRanges": "[function]",
+          "onDidChangeVisibleTextEditors": "[function]",
+          "onDidClosePreview": "[function]",
+          "onDidOpenPreview": "[function]",
+          "openAndRunTerminal": "[function]",
+          "openNewResourceDialog": "[function]",
+          "openPreview": "[function]",
+          "refreshPreview": "[function]",
+          "registerCustomEditorProvider": "[function]",
+          "registerCustomJsonFormEditorProvider": "[function]",
+          "registerFileDecorationProvider": "[function]",
+          "registerTreeDataProvider": "[function]",
+          "registerUriHandler": "[function]",
+          "registerViewProvider": "[function]",
+          "revealFile": "[function]",
+          "setStatusBarMessage": "[function]",
+          "showErrorMessage": "[function]",
+          "showFormDialog": "[function]",
+          "showInformationMessage": "[function]",
+          "showInputBox": "[function]",
+          "showManifestEditPart": "[function]",
+          "showMessageBox": "[function]",
+          "showOpenDialog": "[function]",
+          "showPopupMenu": "[function]",
+          "showQuickPick": "[function]",
+          "showReferences": "[function]",
+          "showTextDocument": "[function]",
+          "showToast": "[function]",
+          "showView": "[function]",
+          "showWarningMessage": "[function]",
+          "showWorkspaceFolderPick": "[function]",
+          "unregisterCustomEditorProvider": "[function]",
+          "updateActiveTextEditor": "[function]",
+          "visibleTextEditors": "[function]",
+          "withProgress": "[function]"
+        }
+      },
+      "workspace": {
+        "assignDocTranslator": "[function]",
+        "fire_DidChangeWorkspaceFoldersEvent": "[function]",
+        "applyEdit": "[function]",
+        "asRelativePath": "[function]",
+        "closeTextDocument": "[function]",
+        "copyFileWithPrompt": "[function]",
+        "createFileSystemWatcher": "[function]",
+        "fs": {
+          "readFile": "[function]"
+        },
+        "getConfiguration": "[function]",
+        "getWorkspaceFolder": "[function]",
+        "getWorkspaceFolders": "[function]",
+        "gotoConfiguration": "[function]",
+        "init": "[function]",
+        "onBeforeEvent": "[function]",
+        "onDidChangeConfiguration": "[function]",
+        "onDidChangeTextDocument": "[function]",
+        "onDidChangeWorkspaceFolders": "[function]",
+        "onDidCloseTextDocument": "[function]",
+        "onDidCreateFiles": "[function]",
+        "onDidDeleteFiles": "[function]",
+        "onDidOpenTextDocument": "[function]",
+        "onDidRenameFiles": "[function]",
+        "onDidSaveTextDocument": "[function]",
+        "onWillSaveTextDocument": "[function]",
+        "openTextDocument": "[function]",
+        "registerFileSystemProvider": "[function]",
+        "registerSnippetVariableResolver": "[function]",
+        "registerTaskProvider": "[function]",
+        "registerWorkspaceFolderLauncher": "[function]",
+        "resolveLaunchConfiguration": "[function]",
+        "showSubPackageWindow": "[function]",
+        "specialFileOperate": "[function]",
+        "startLaunching": "[function]",
+        "textDocuments": "[Array(1)]",
+        "updateLaunching": "[function]",
+        "WorkspaceEdit": "[function]",
+        "workspaceFolders": "[Array(1)]"
+      }
+    }
+  }
+}
