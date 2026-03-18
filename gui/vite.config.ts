@@ -24,7 +24,6 @@ export default defineConfig({
       input: {
         // [HBuilderX] HBuilderX 使用单入口，index.html 由代码动态生成
         index: resolve(__dirname, "index.html"),
-        indexConsole: resolve(__dirname, "indexConsole.html"),
       },
       output: {
         entryFileNames: `assets/[name].js`,

@@ -2,7 +2,7 @@
   "name": "continue-hbuilderx-win",
   "displayName": "Continue - AI编程助手 - Windows",
   "description": "基于开源的Continue辅助编程助手进行HBuilderX适配，为uni-app开发者提供更沉浸式的AI体验",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "continue",
   "engines": {
     "HBuilderX": "^3.8.0"
